@@ -1,10 +1,19 @@
-# Shellmate
+<p align="center">
+  <img src="electron/icons/icon.png" width="128" height="128" alt="Shellmate icon">
+</p>
 
-Set up a personal AI helper for your Mac. No terminal, no config files — just a short conversation and your helper is ready.
+<h1 align="center">Shellmate</h1>
 
-## Download
+<p align="center">
+  Set up a personal AI helper for your Mac.<br>
+  No terminal, no config files — just a short conversation and your helper is ready.
+</p>
 
-- **macOS** — [Download DMG](https://github.com/adamlsneed/shellmate/releases/latest)
+<p align="center">
+  <a href="https://github.com/adamlsneed/shellmate/releases/latest"><strong>Download for macOS</strong></a>
+</p>
+
+---
 
 > **Note:** The app is not yet code-signed.
 >
@@ -16,17 +25,14 @@ Set up a personal AI helper for your Mac. No terminal, no config files — just 
 
 ## How it works
 
-1. **Connect an AI** — Use your Anthropic or OpenAI API key. Step-by-step instructions walk you through getting one (free credit included for Anthropic).
-
-2. **Have a conversation** — The AI asks you plain-English questions about what your helper should do, which Mac apps you use, and what you'd like to automate. No technical knowledge needed.
-
-3. **Review** — See exactly what was captured before anything is written.
-
-4. **Generate** — Creates workspace files that define your helper's personality, rules, and capabilities.
-
-5. **Set up capabilities** — Choose memory mode, enable web search, connect Home Assistant, and set safety permissions (what your helper can do without asking).
-
-6. **Done** — Your helper is validated and ready. Chat with it to test, then start the gateway to go live.
+| Step | What happens |
+|:----:|:-------------|
+| 🐢 | **Connect an AI** — Use your Anthropic or OpenAI API key (or OAuth token). Step-by-step instructions walk you through getting one. |
+| 💬 | **Have a conversation** — The AI asks plain-English questions about what your helper should do, which Mac apps you use, and what you'd like to automate. |
+| 📋 | **Review** — See exactly what was captured before anything is written. |
+| ⚙️ | **Generate** — Creates workspace files that define your helper's personality, rules, and capabilities. |
+| 🔒 | **Set permissions** — Choose what your helper can do on its own vs. what it should always ask first. |
+| ✅ | **Done** — Your helper is validated and ready. Chat with it to test, then start the gateway to go live. |
 
 ## What gets generated
 
