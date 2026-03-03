@@ -56,7 +56,7 @@ function GatewayPanel() {
     <div className="border border-gray-700 rounded-xl p-4 mb-6 bg-gray-800/30">
       <div className="flex items-start justify-between gap-4 mb-3">
         <div>
-          <p className="text-sm font-semibold text-white">Start the OpenClaw gateway</p>
+          <p className="text-sm font-semibold text-white">Start the gateway</p>
           <p className="text-xs text-gray-500 mt-0.5">
             Your helper gets full capabilities once the gateway is running.
           </p>
