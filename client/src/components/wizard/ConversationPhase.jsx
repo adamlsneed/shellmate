@@ -208,13 +208,13 @@ export default function ConversationPhase() {
   // ── Not configured ──────────────────────────────────────────────────────────
   if (!configured || showSetup) {
     return (
-      <div className="max-w-lg mx-auto pt-8">
-        <div className="text-center mb-8">
-          <div className="text-4xl mb-3">🐢</div>
-          <h2 className="text-2xl font-bold text-white mb-2">Set up your Mac helper</h2>
-          <p className="text-gray-400 text-sm">
-            I'll have a friendly conversation with you and handle all the technical stuff behind the scenes.
-          </p>
+      <div className="max-w-lg mx-auto pt-4">
+        <div className="flex items-center gap-3 mb-4">
+          <span className="text-2xl">🐢</span>
+          <div>
+            <h2 className="text-lg font-bold text-white leading-tight">Set up your Mac helper</h2>
+            <p className="text-gray-500 text-xs">A short conversation, then your helper is ready.</p>
+          </div>
         </div>
         <AISetup onDone={() => {
           setShowSetup(false);

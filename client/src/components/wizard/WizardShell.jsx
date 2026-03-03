@@ -77,9 +77,22 @@ export default function WizardShell({ onComplete }) {
         <div ref={scrollRef} className="h-full overflow-y-auto flex flex-col px-6 py-4">
           <ActivePhase key={resetCount} onComplete={onComplete} />
         </div>
-        {/* Fade hint when more content below */}
+        {/* Scroll indicator — gradient + chevron when content is clipped */}
         {canScroll && (
-          <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-navy-950 to-transparent pointer-events-none" />
+          <div className="absolute bottom-0 left-0 right-0 pointer-events-none">
+            <div className="h-16 bg-gradient-to-t from-navy-950 via-navy-950/80 to-transparent" />
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 pointer-events-auto">
+              <button
+                onClick={() => scrollRef.current?.scrollBy({ top: 200, behavior: 'smooth' })}
+                className="text-gray-500 hover:text-gray-300 transition-colors animate-bounce"
+                aria-label="Scroll down for more"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </div>
