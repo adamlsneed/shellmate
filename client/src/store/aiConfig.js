@@ -18,7 +18,7 @@ function save(state) {
       apiKey: state.apiKey,
       model: state.model,
       configured: state.configured,
-      openclawEnv: state.openclawEnv || false,
+      envKey: state.envKey || false,
     }));
   } catch {}
 }
@@ -26,31 +26,26 @@ function save(state) {
 const saved = load();
 
 export const useAIConfig = create((set, get) => ({
-  provider: saved.provider || 'openclaw',
+  provider: saved.provider || 'default',
   apiKey: saved.apiKey || '',
   model: saved.model || 'claude-sonnet-4-6',
   configured: saved.configured || false,
   // true = using server-side env key, no client API key needed
-  openclawEnv: saved.openclawEnv || false,
-
-  // The Shellmate default status, loaded async from the server
-  openclawDefault: null,
+  envKey: saved.envKey || saved.openclawEnv || false,
 
   setProvider: (provider) => { set({ provider }); save(get()); },
   setApiKey: (apiKey) => { set({ apiKey }); save(get()); },
   setModel: (model) => { set({ model }); save(get()); },
 
-  configure: ({ provider, apiKey, model, openclawEnv }) => {
-    const next = { provider, apiKey: apiKey || '', model, configured: true, openclawEnv: !!openclawEnv };
+  configure: ({ provider, apiKey, model, envKey }) => {
+    const next = { provider, apiKey: apiKey || '', model, configured: true, envKey: !!envKey };
     set(next);
     save({ ...get(), ...next });
   },
 
   reset: () => {
-    const next = { provider: 'openclaw', apiKey: '', model: 'claude-sonnet-4-6', configured: false, openclawEnv: false };
+    const next = { provider: 'default', apiKey: '', model: 'claude-sonnet-4-6', configured: false, envKey: false };
     set(next);
     save(next);
   },
-
-  setOpenclawDefault: (info) => set({ openclawDefault: info }),
 }));

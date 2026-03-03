@@ -32,11 +32,22 @@
 | 📋 | **Review** — See exactly what was captured before anything is written. |
 | ⚙️ | **Generate** — Creates workspace files that define your helper's personality, rules, and capabilities. |
 | 🔒 | **Set permissions** — Choose what your helper can do on its own vs. what it should always ask first. |
-| ✅ | **Done** — Your helper is validated and ready. Chat with it to test, then start the gateway to go live. |
+| ✅ | **Start chatting** — Your helper is validated and ready with full tool capabilities. |
+
+After the one-time setup, Shellmate opens straight to chat on every launch.
+
+## What your helper can do
+
+- **Run terminal commands** — automate tasks, manage files, run scripts
+- **Read and write files** — organize, create, and edit documents
+- **Search the web** — look things up via Brave Search
+- **Fetch web pages** — read and summarize web content
+
+All tools respect the permissions you set during setup.
 
 ## What gets generated
 
-In `~/.openclaw/workspace/`:
+In `~/.shellmate/workspace/`:
 
 | File | Purpose |
 |------|---------|

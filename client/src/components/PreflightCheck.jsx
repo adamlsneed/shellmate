@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 
 export default function PreflightCheck({ onReady }) {
-  const [status, setStatus] = useState('checking'); // checking | ok | missing
+  const [status, setStatus] = useState('checking'); // checking | ok | migrating | error
 
   useEffect(() => {
     check();
@@ -12,18 +12,42 @@ export default function PreflightCheck({ onReady }) {
     try {
       const res = await fetch('/api/preflight');
       const data = await res.json();
-      if (data.installed) {
+
+      if (data.ready) {
         setStatus('ok');
-        setTimeout(onReady, 1200);
-      } else {
-        setStatus('missing');
+        setTimeout(onReady, 800);
+        return;
       }
+
+      if (data.needsMigration) {
+        setStatus('migrating');
+        await migrate();
+        return;
+      }
+
+      // Should not reach here — preflight auto-creates config dir
+      setStatus('ok');
+      setTimeout(onReady, 800);
     } catch {
-      setStatus('missing');
+      setStatus('error');
     }
   }
 
-  // Checking
+  async function migrate() {
+    try {
+      const res = await fetch('/api/preflight/migrate', { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) {
+        setStatus('ok');
+        setTimeout(onReady, 800);
+      } else {
+        setStatus('error');
+      }
+    } catch {
+      setStatus('error');
+    }
+  }
+
   if (status === 'checking') {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4">
@@ -33,7 +57,6 @@ export default function PreflightCheck({ onReady }) {
     );
   }
 
-  // Ready
   if (status === 'ok') {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4">
@@ -42,27 +65,33 @@ export default function PreflightCheck({ onReady }) {
           <span className="text-xl">✓</span>
           <span className="font-semibold">Ready!</span>
         </div>
-        <p className="text-sm text-gray-500">Starting the builder...</p>
       </div>
     );
   }
 
-  // Not found
+  if (status === 'migrating') {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4">
+        <div className="text-4xl">🐢</div>
+        <p className="text-gray-400 text-sm animate-pulse">Migrating from previous install...</p>
+      </div>
+    );
+  }
+
+  // error
   return (
     <div className="flex flex-col items-center justify-center h-screen px-6">
       <div className="text-5xl mb-5">🐢</div>
-      <h2 className="text-xl font-bold text-white mb-2">Shellmate binary not found</h2>
+      <h2 className="text-xl font-bold text-white mb-2">Setup issue</h2>
       <p className="text-gray-400 text-sm text-center max-w-md mb-6">
-        The bundled openclaw binary wasn't detected. In dev mode this is expected if you
-        haven't placed a binary in <code className="text-shell-400">resources/openclaw/</code>.
+        Something went wrong during initialization. Try again or continue to set up manually.
       </p>
-
       <div className="flex gap-3">
         <button
           onClick={check}
           className="px-5 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-xl text-sm font-semibold transition-colors"
         >
-          Check again
+          Try again
         </button>
         <button
           onClick={onReady}

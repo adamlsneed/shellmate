@@ -53,9 +53,9 @@ export default function GenerateStep() {
     setError('');
     setConfigError('');
     try {
-      const workspaceRoot = '~/.openclaw/workspace';
+      const workspaceRoot = '~/.shellmate/workspace';
 
-      // Rewrite generated file paths: workspace-main/X → ~/.openclaw/workspace/X
+      // Rewrite generated file paths: workspace-main/X → ~/.shellmate/workspace/X
       const files = generatedFiles.map(f => {
         const match = f.path.match(/^workspace-main\/(.+)$/);
         if (match) {
@@ -73,8 +73,8 @@ export default function GenerateStep() {
       if (!writeRes.ok) throw new Error(writeData.error || 'Write failed');
       setWriteResult(writeData);
 
-      // Register in openclaw.json — main agent uses agents.defaults, no agents.list needed
-      const configRes = await fetch('/api/openclaw-config', {
+      // Register in shellmate.json — main agent uses agents.defaults, no agents.list needed
+      const configRes = await fetch('/api/config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -82,7 +82,7 @@ export default function GenerateStep() {
         }),
       });
       if (!configRes.ok) {
-        setConfigError('Files written, but failed to update openclaw.json. You may need to configure manually.');
+        setConfigError('Files written, but failed to update shellmate.json. You may need to configure manually.');
       } else {
         setConfigMerged(true);
       }
@@ -135,7 +135,7 @@ export default function GenerateStep() {
               <div className="flex items-center gap-2">
                 <span className="text-green-400 text-sm">✓</span>
                 <span className="text-sm text-gray-200">
-                  Written {writeResult.written?.length || 0} files to <code className="text-shell-400">~/.openclaw/workspace</code>
+                  Written {writeResult.written?.length || 0} files to <code className="text-shell-400">~/.shellmate/workspace</code>
                   {writeResult.skipped?.length > 0 && (
                     <span className="text-gray-500"> ({writeResult.skipped.length} skipped, already existed)</span>
                   )}
@@ -145,8 +145,7 @@ export default function GenerateStep() {
                 <div className="flex items-center gap-2">
                   <span className="text-green-400 text-sm">✓</span>
                   <span className="text-sm text-gray-200">
-                    Agent registered in <code className="text-shell-400">openclaw.json</code>
-                    <span className="text-gray-500 ml-1">— gateway will pick it up on next restart</span>
+                    Agent registered in <code className="text-shell-400">shellmate.json</code>
                   </span>
                 </div>
               )}
@@ -178,7 +177,7 @@ export default function GenerateStep() {
                 disabled={isWriting}
                 className="px-6 py-2 bg-shell-600 hover:bg-shell-500 text-white rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
               >
-                {isWriting ? '⟳ Writing...' : 'Write to ~/.openclaw →'}
+                {isWriting ? '⟳ Writing...' : 'Write to ~/.shellmate →'}
               </button>
             )}
 

@@ -1,11 +1,11 @@
 import { Router } from 'express';
-import { readOpenClawConfig, writeOpenClawConfig, backupConfig } from '../utils/config.js';
+import { readConfig, writeConfig, backupConfig } from '../utils/config.js';
 
 const router = Router();
 
-// GET /api/capabilities — return current capabilities state from openclaw.json
+// GET /api/capabilities — return current capabilities state from shellmate.json
 router.get('/capabilities', (_req, res) => {
-  const cfg = readOpenClawConfig();
+  const cfg = readConfig();
 
   const memoryPlugin = cfg.plugins?.slots?.memory || null;
   const lancedb = cfg.plugins?.entries?.['memory-lancedb'] || {};
@@ -50,11 +50,11 @@ router.get('/capabilities', (_req, res) => {
   });
 });
 
-// POST /api/capabilities — write capabilities to openclaw.json
+// POST /api/capabilities — write capabilities to shellmate.json
 router.post('/capabilities', (req, res) => {
   try {
     const { memory, webSearch, webFetch, homeAssistant, googlePlaces } = req.body;
-    const cfg = readOpenClawConfig();
+    const cfg = readConfig();
 
     // Backup
     backupConfig();
@@ -170,7 +170,7 @@ router.post('/capabilities', (req, res) => {
       }
     }
 
-    writeOpenClawConfig(cfg);
+    writeConfig(cfg);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

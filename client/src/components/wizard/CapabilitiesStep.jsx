@@ -516,7 +516,7 @@ export default function CapabilitiesStep() {
           <>
             <div className="flex items-center gap-2 text-green-400 text-sm">
               <span>&#x2713;</span>
-              <span>Capabilities saved to openclaw.json</span>
+              <span>Capabilities saved to shellmate.json</span>
             </div>
             <button
               onClick={wizAdvance}

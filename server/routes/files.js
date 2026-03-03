@@ -2,7 +2,7 @@ import { Router } from 'express';
 import fs from 'fs';
 import path from 'path';
 import { expandHome } from '../utils/paths.js';
-import { readOpenClawConfig, backupTimestamp } from '../utils/config.js';
+import { readConfig, backupTimestamp } from '../utils/config.js';
 
 const router = Router();
 
@@ -10,14 +10,14 @@ function resolveAgentWorkspace(agentId, cfg) {
   const existing = (cfg.agents?.list || []).find(a => a.id === agentId);
   if (existing?.workspace) return existing.workspace;
   // Agent exists but has no explicit workspace — uses agents.defaults.workspace
-  if (existing) return cfg.agents?.defaults?.workspace || '~/.openclaw/workspace';
+  if (existing) return cfg.agents?.defaults?.workspace || '~/.shellmate/workspace';
   // New agent
-  return `~/.openclaw/workspace-${agentId}`;
+  return `~/.shellmate/workspace-${agentId}`;
 }
 
 router.get('/check-paths', (req, res) => {
   const agents = (req.query.agents || '').split(',').filter(Boolean);
-  const cfg = readOpenClawConfig();
+  const cfg = readConfig();
   const conflicts = agents.map(agentId => {
     const ws = resolveAgentWorkspace(agentId, cfg);
     const p = expandHome(ws);
@@ -33,9 +33,9 @@ router.post('/write', async (req, res) => {
   for (const file of files) {
     try {
       let filePath = file.path;
-      // Resolve relative to basePath or ~/.openclaw
+      // Resolve relative to basePath or ~/.shellmate
       if (!path.isAbsolute(filePath)) {
-        const base = basePath ? expandHome(basePath) : expandHome('~/.openclaw');
+        const base = basePath ? expandHome(basePath) : expandHome('~/.shellmate');
         filePath = path.join(base, filePath);
       } else {
         filePath = expandHome(filePath);

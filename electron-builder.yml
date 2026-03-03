@@ -7,15 +7,8 @@ files:
   - server/**/*
   - dist/**/*
   - package.json
-  - resources/**/*
 asarUnpack:
   - dist/**/*
-  - resources/**/*
-extraResources:
-  - from: resources/openclaw
-    to: openclaw
-    filter:
-      - "**/*"
 publish:
   provider: github
   releaseType: release

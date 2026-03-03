@@ -88,7 +88,7 @@ const PROVIDERS = {
 };
 
 export default function AISetup({ onDone }) {
-  const { configure, setOpenclawDefault } = useAIConfig();
+  const { configure } = useAIConfig();
 
   const [envStatus, setEnvStatus]           = useState(null); // null = loading
   const [provider, setProvider]             = useState('anthropic');
@@ -99,18 +99,17 @@ export default function AISetup({ onDone }) {
   const [testing, setTesting]               = useState(false);
 
   useEffect(() => {
-    fetch('/api/chat/openclaw-status')
+    fetch('/api/chat/env-status')
       .then(r => r.json())
       .then(data => {
         setEnvStatus(data);
-        setOpenclawDefault(data);
         if (data.available) {
           // Env key found — configure silently and advance
           configure({
-            provider: 'openclaw',
+            provider: 'default',
             apiKey: '',
             model: data.normalized || data.model || 'claude-sonnet-4-6',
-            openclawEnv: true,
+            envKey: true,
           });
           onDone?.();
         }

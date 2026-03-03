@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { detectProvider, normalizeModel, callAnthropic, callOpenAI, resolveApiKey } from '../utils/ai-clients.js';
-import { readOpenClawConfig } from '../utils/config.js';
+import { readConfig } from '../utils/config.js';
 
 const router = Router();
 
@@ -20,7 +20,7 @@ router.post('/chat', async (req, res) => {
   }
 
   // Resolve API key: use client-supplied key, or fall back to environment variables
-  const actualProvider = provider === 'openclaw' ? 'anthropic' : provider;
+  const actualProvider = (provider === 'default' || provider === 'openclaw') ? 'anthropic' : provider;
   const apiKey = resolveApiKey(actualProvider, clientApiKey);
 
   if (!apiKey) {
@@ -46,7 +46,12 @@ router.post('/chat', async (req, res) => {
 });
 
 // Check whether the server has credentials available for "Shellmate default" mode
+// Also mount at legacy path for any cached clients
 router.get('/chat/openclaw-status', async (req, res) => {
+  res.redirect('/api/chat/env-status');
+});
+
+router.get('/chat/env-status', async (req, res) => {
   try {
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
     const openaiKey = process.env.OPENAI_API_KEY;
@@ -67,7 +72,7 @@ router.get('/chat/openclaw-status', async (req, res) => {
 // Legacy endpoint kept for compatibility
 router.get('/chat/default-model', async (req, res) => {
   try {
-    const cfg = readOpenClawConfig();
+    const cfg = readConfig();
     const primary = cfg?.agents?.defaults?.model?.primary || null;
     const provider = primary ? detectProvider(primary) : null;
     res.json({ model: primary, provider, normalized: primary ? normalizeModel(primary) : null });

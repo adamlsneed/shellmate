@@ -3,121 +3,16 @@ import { useTeamSpecStore } from '../../store/teamSpec.js';
 import { useAIConfig } from '../../store/aiConfig.js';
 import { MessageBubble } from '../common/MessageBubble.jsx';
 import { BouncingDots } from '../common/LoadingSpinner.jsx';
+import ToolCallDisplay from '../chat/ToolCallDisplay.jsx';
 
-// ---- Gateway panel ----------------------------------------------------------
-function GatewayPanel() {
-  const [status, setStatus] = useState('idle'); // idle | starting | done | error
-  const [log, setLog] = useState('');
-  const [copied, setCopied] = useState(false);
-  const logRef = useRef(null);
-
-  useEffect(() => {
-    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
-  }, [log]);
-
-  function copyCommand() {
-    navigator.clipboard.writeText('openclaw gateway').then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
-  }
-
-  async function handleStart() {
-    setStatus('starting');
-    setLog('');
-    try {
-      const res = await fetch('/api/gateway/restart', { method: 'POST' });
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop();
-        for (const line of lines) {
-          if (!line.startsWith('data:')) continue;
-          try {
-            const { type, data } = JSON.parse(line.slice(5).trim());
-            if (type === 'log') setLog(p => p + data);
-            if (type === 'done') { setStatus('done'); }
-            if (type === 'error') { setStatus('error'); setLog(p => p + '\n' + data); }
-          } catch {}
-        }
-      }
-    } catch (err) {
-      setStatus('error');
-      setLog('Error: ' + err.message);
-    }
-  }
-
-  return (
-    <div className="border border-gray-700 rounded-xl p-4 mb-6 bg-gray-800/30">
-      <div className="flex items-start justify-between gap-4 mb-3">
-        <div>
-          <p className="text-sm font-semibold text-white">Start the gateway</p>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Your helper gets full capabilities once the gateway is running.
-          </p>
-        </div>
-        {status === 'idle' && (
-          <button
-            onClick={handleStart}
-            className="shrink-0 px-4 py-1.5 bg-shell-600 hover:bg-shell-500 text-white rounded-lg text-xs font-semibold transition-colors"
-          >
-            Start automatically
-          </button>
-        )}
-        {status === 'starting' && (
-          <span className="shrink-0 flex items-center gap-1.5 text-xs text-gray-400">
-            <span className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
-            Starting...
-          </span>
-        )}
-        {status === 'done' && (
-          <span className="shrink-0 text-xs text-green-400">Done</span>
-        )}
-        {status === 'error' && (
-          <button
-            onClick={handleStart}
-            className="shrink-0 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg text-xs transition-colors"
-          >
-            Try again
-          </button>
-        )}
-      </div>
-
-      {/* Manual command -- always visible */}
-      <div className="flex items-center justify-between bg-navy-900 border border-gray-800 rounded-lg px-3 py-2">
-        <code className="text-xs text-shell-400 font-mono">openclaw gateway</code>
-        <button
-          onClick={copyCommand}
-          className="text-xs text-gray-600 hover:text-gray-300 transition-colors ml-3 shrink-0"
-        >
-          {copied ? 'Copied' : 'Copy'}
-        </button>
-      </div>
-
-      {log && (
-        <pre
-          ref={logRef}
-          className="mt-2 max-h-20 bg-navy-950 border border-gray-800 rounded-lg p-2 text-xs font-mono text-green-400 overflow-y-auto scrollbar-thin whitespace-pre-wrap"
-        >
-          {log}
-        </pre>
-      )}
-    </div>
-  );
-}
-
-// ---- Agent chat preview -----------------------------------------------------
+// ---- Agent chat preview (with SSE + tool execution) -------------------------
 function AgentChat() {
-  const { provider, apiKey, model, openclawEnv } = useAIConfig();
+  const { provider, apiKey, model, envKey } = useAIConfig();
   const { teamSpec } = useTeamSpecStore();
   const agent = teamSpec.agent;
 
-  const [messages, setMessages] = useState([]);
+  const [chatItems, setChatItems] = useState([]);
+  const [apiMessages, setApiMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -126,7 +21,7 @@ function AgentChat() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, loading]);
+  }, [chatItems, loading]);
 
   async function send() {
     const text = input.trim();
@@ -135,8 +30,9 @@ function AgentChat() {
     setError('');
 
     const userMsg = { role: 'user', content: text };
-    const next = [...messages, userMsg];
-    setMessages(next);
+    const nextApiMessages = [...apiMessages, userMsg];
+    setApiMessages(nextApiMessages);
+    setChatItems(prev => [...prev, { type: 'user', content: text }]);
     setLoading(true);
 
     try {
@@ -144,15 +40,78 @@ function AgentChat() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: next,
-          ...(openclawEnv ? {} : { apiKey }),
+          messages: nextApiMessages,
+          ...(envKey ? {} : { apiKey }),
           provider,
           model,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Chat failed');
-      setMessages([...next, { role: 'assistant', content: data.content }]);
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Chat failed');
+      }
+
+      // Parse SSE stream
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let currentText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (!line.startsWith('data:')) continue;
+          try {
+            const { type, data } = JSON.parse(line.slice(5).trim());
+
+            if (type === 'text') {
+              currentText += data.content;
+              setChatItems(prev => {
+                const next = [...prev];
+                const lastIdx = next.length - 1;
+                if (lastIdx >= 0 && next[lastIdx].type === 'assistant') {
+                  next[lastIdx] = { ...next[lastIdx], content: currentText };
+                } else {
+                  next.push({ type: 'assistant', content: currentText });
+                }
+                return next;
+              });
+            }
+
+            if (type === 'tool_call') {
+              setChatItems(prev => [
+                ...prev,
+                { type: 'tool_call', id: data.id, name: data.name, input: data.input, isExecuting: true },
+              ]);
+            }
+
+            if (type === 'tool_result') {
+              setChatItems(prev =>
+                prev.map(item =>
+                  item.type === 'tool_call' && item.id === data.id
+                    ? { ...item, result: data.result, isExecuting: false }
+                    : item
+                )
+              );
+              currentText = '';
+            }
+
+            if (type === 'error') {
+              setError(data.message || 'An error occurred');
+            }
+          } catch {}
+        }
+      }
+
+      if (currentText) {
+        setApiMessages(prev => [...prev, { role: 'assistant', content: currentText }]);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -167,23 +126,30 @@ function AgentChat() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Preview notice */}
-      <div className="mb-3 px-3 py-2 bg-gray-800/40 border border-gray-700/50 rounded-lg text-xs text-gray-500">
-        Preview mode -- personality and rules are loaded from your workspace files.
-        External tools (web, shell, memory) require the gateway.
-      </div>
-
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto space-y-3 py-2 scrollbar-thin min-h-0">
-        {messages.length === 0 && (
+      <div className="flex-1 overflow-y-auto space-y-2 py-2 scrollbar-thin min-h-0">
+        {chatItems.length === 0 && (
           <div className="text-center text-gray-600 text-xs mt-8">
             Say hello to {agent.name || 'your helper'} to test how it responds.
           </div>
         )}
-        {messages.map((msg, i) => (
-          <MessageBubble key={i} role={msg.role} content={msg.content} />
-        ))}
-        {loading && (
+        {chatItems.map((item, i) => {
+          if (item.type === 'user') return <MessageBubble key={i} role="user" content={item.content} />;
+          if (item.type === 'assistant') return <MessageBubble key={i} role="assistant" content={item.content} />;
+          if (item.type === 'tool_call') {
+            return (
+              <ToolCallDisplay
+                key={`tool-${item.id}`}
+                name={item.name}
+                input={item.input}
+                result={item.result}
+                isExecuting={item.isExecuting}
+              />
+            );
+          }
+          return null;
+        })}
+        {loading && chatItems[chatItems.length - 1]?.type !== 'assistant' && (
           <div className="flex justify-start">
             <div className="bg-gray-800 rounded-2xl rounded-bl-sm px-3 py-2">
               <BouncingDots />
@@ -223,9 +189,9 @@ function AgentChat() {
   );
 }
 
-// ---- Validation terminal output ---------------------------------------------
-function ValidationOutput({ output, isRunning }) {
-  if (!output && !isRunning) return null;
+// ---- Validation checks display ----------------------------------------------
+function ValidationOutput({ checks, isRunning }) {
+  if (!checks && !isRunning) return null;
 
   return (
     <div className="bg-navy-950 border border-gray-700 rounded-xl overflow-hidden">
@@ -233,17 +199,29 @@ function ValidationOutput({ output, isRunning }) {
         <div className="w-3 h-3 rounded-full bg-red-500" />
         <div className="w-3 h-3 rounded-full bg-yellow-500" />
         <div className="w-3 h-3 rounded-full bg-green-500" />
-        <span className="text-xs text-gray-500 ml-2 font-mono">terminal</span>
+        <span className="text-xs text-gray-500 ml-2 font-mono">checks</span>
       </div>
-      <pre className="p-4 text-xs font-mono text-green-400 overflow-auto max-h-48 scrollbar-thin whitespace-pre-wrap">
-        {isRunning ? 'Running openclaw doctor...' : output}
-      </pre>
+      <div className="p-4 space-y-1">
+        {isRunning ? (
+          <p className="text-xs font-mono text-gray-400">Running checks...</p>
+        ) : (
+          checks.map((c, i) => (
+            <div key={i} className="flex items-center gap-2 text-xs font-mono">
+              <span className={c.passed ? 'text-green-400' : 'text-red-400'}>
+                {c.passed ? 'PASS' : 'FAIL'}
+              </span>
+              <span className="text-gray-400">{c.name}:</span>
+              <span className="text-gray-300">{c.detail}</span>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   );
 }
 
 // ---- Main DoneStep ----------------------------------------------------------
-export default function DoneStep() {
+export default function DoneStep({ onComplete }) {
   const {
     teamSpec,
     validationOutput,
@@ -255,6 +233,7 @@ export default function DoneStep() {
 
   const [validated, setValidated] = useState(false);
   const [validationPassed, setValidationPassed] = useState(false);
+  const [checks, setChecks] = useState(null);
   const hasRun = useRef(false);
 
   // Auto-validate on mount
@@ -267,15 +246,13 @@ export default function DoneStep() {
   async function runValidation() {
     setIsValidating(true);
     setValidationOutput('');
+    setChecks(null);
     try {
       const res = await fetch('/api/validate', { method: 'POST' });
       const data = await res.json();
-      const output = data.output || '(no output)';
-      setValidationOutput(output);
-      // Check if the validation passed (no FAIL or error lines)
-      const lower = output.toLowerCase();
-      const passed = !lower.includes('fail') && !lower.includes('error');
-      setValidationPassed(passed);
+      setValidationOutput(data.output || '(no output)');
+      setValidationPassed(data.passed);
+      setChecks(data.checks || []);
       setValidated(true);
     } catch (err) {
       setValidationOutput(`Error: ${err.message}`);
@@ -302,9 +279,9 @@ export default function DoneStep() {
 
         {validated && validationPassed && (
           <div className="mb-4 px-4 py-3 bg-green-900/20 border border-green-800/50 rounded-xl">
-            <p className="text-sm font-semibold text-green-400">Your helper is ready!</p>
+            <p className="text-sm font-semibold text-green-400">{agentName} is ready!</p>
             <p className="text-xs text-green-600 mt-0.5">
-              All checks passed. Chat with {agentName} below, or start the gateway to go live.
+              All checks passed. Try chatting below, then start using your helper for real.
             </p>
           </div>
         )}
@@ -313,9 +290,9 @@ export default function DoneStep() {
           <div className="mb-4 px-4 py-3 bg-yellow-900/20 border border-yellow-800/50 rounded-xl">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-semibold text-yellow-400">Validation found issues</p>
+                <p className="text-sm font-semibold text-yellow-400">Some checks need attention</p>
                 <p className="text-xs text-yellow-600 mt-0.5">
-                  Check the output below. You can still chat with {agentName} and start the gateway.
+                  See details below. You can still chat with {agentName} and fix these later.
                 </p>
               </div>
               <button
@@ -328,11 +305,20 @@ export default function DoneStep() {
           </div>
         )}
 
-        <ValidationOutput output={validationOutput} isRunning={isValidating} />
+        <ValidationOutput checks={checks} isRunning={isValidating} />
       </div>
 
-      {/* ---- Gateway ---- */}
-      <GatewayPanel />
+      {/* ---- Start chatting button ---- */}
+      {validated && onComplete && (
+        <div className="mb-6">
+          <button
+            onClick={onComplete}
+            className="w-full px-6 py-3 bg-shell-600 hover:bg-shell-500 text-white rounded-xl text-sm font-semibold transition-colors"
+          >
+            Start chatting →
+          </button>
+        </div>
+      )}
 
       {/* ---- Chat preview ---- */}
       <div className="flex-1 min-h-0 border border-gray-800 rounded-xl p-4 bg-navy-900/20">
@@ -348,7 +334,7 @@ export default function DoneStep() {
           Start over
         </button>
         <p className="text-xs text-gray-700">
-          Full capabilities available once the gateway is running
+          Your helper has full tool capabilities
         </p>
       </div>
     </div>

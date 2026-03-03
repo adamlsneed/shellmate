@@ -158,7 +158,7 @@ export default function ConversationPhase() {
     conversationComplete, setConversationComplete,
     mergeSpec,
   } = useTeamSpecStore();
-  const { configured, provider, apiKey, model, openclawEnv } = useAIConfig();
+  const { configured, provider, apiKey, model, envKey } = useAIConfig();
   const { advance } = useWizard();
 
   const [input, setInput] = useState('');
@@ -197,7 +197,7 @@ export default function ConversationPhase() {
           messages: isOpening
             ? [{ role: 'user', content: 'Greet the user warmly and ask what their name is and what they mostly use their Mac for.' }]
             : next,
-          ...(openclawEnv ? {} : { apiKey }),
+          ...(envKey ? {} : { apiKey }),
           model,
           provider,
           system: SYSTEM_PROMPT,

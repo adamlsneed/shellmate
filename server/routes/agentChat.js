@@ -1,22 +1,21 @@
 import { Router } from 'express';
 import { existsSync, readFileSync } from 'fs';
-import { spawn } from 'child_process';
 import path from 'path';
-import os from 'os';
 import { expandHome } from '../utils/paths.js';
-import { readOpenClawConfig } from '../utils/config.js';
-import { callAnthropic, callOpenAI, resolveApiKey } from '../utils/ai-clients.js';
+import { readConfig } from '../utils/config.js';
+import { resolveApiKey } from '../utils/ai-clients.js';
 import { initSse, sendSse } from '../utils/sse.js';
-import { getOpenclawBinary } from '../utils/openclaw-binary.js';
+import { getToolsForAgent } from '../tools/definitions.js';
+import { runAnthropicLoop, runOpenAILoop } from '../tools/loop.js';
 
 const router = Router();
 
 function resolveAgentWorkspace(agentId) {
-  const cfg = readOpenClawConfig();
+  const cfg = readConfig();
   const existing = (cfg.agents?.list || []).find(a => a.id === agentId);
   if (existing?.workspace) return expandHome(existing.workspace);
-  if (existing) return expandHome(cfg.agents?.defaults?.workspace || '~/.openclaw/workspace');
-  return expandHome(`~/.openclaw/workspace-${agentId}`);
+  if (existing) return expandHome(cfg.agents?.defaults?.workspace || '~/.shellmate/workspace');
+  return expandHome(`~/.shellmate/workspace-${agentId}`);
 }
 
 function readWsFile(workspace, filename) {
@@ -40,14 +39,20 @@ function buildSystemPrompt(agentId, workspace) {
   if (tools)    parts.push(`---\n${tools}`);
   if (memory)   parts.push(`---\n## Long-term memory\n${memory}`);
 
-  parts.push(`---
-## Preview mode
-You are running in builder preview mode. You do not have access to external tools (web, files, shell) in this preview — respond based on your personality and knowledge only. Mention this briefly if asked about tools or actions. When the OpenClaw gateway is running, you will have full capabilities.`);
-
   return parts.join('\n\n');
 }
 
-// POST /api/agent-chat/:agentId
+function getAgentConfig(agentId) {
+  const cfg = readConfig();
+  return (cfg.agents?.list || []).find(a => a.id === agentId) || {};
+}
+
+function getBraveApiKey() {
+  const cfg = readConfig();
+  return cfg.tools?.web?.search?.apiKey || '';
+}
+
+// POST /api/agent-chat/:agentId — SSE streaming with tool execution
 router.post('/agent-chat/:agentId', async (req, res) => {
   const { agentId } = req.params;
   const { messages, apiKey: clientApiKey, provider = 'anthropic', model } = req.body;
@@ -55,53 +60,39 @@ router.post('/agent-chat/:agentId', async (req, res) => {
   const workspace = resolveAgentWorkspace(agentId);
   const system = buildSystemPrompt(agentId, workspace);
 
-  const actualProvider = provider === 'openclaw' ? 'anthropic' : provider;
+  const actualProvider = (provider === 'default' || provider === 'openclaw') ? 'anthropic' : provider;
   const apiKey = resolveApiKey(actualProvider, clientApiKey);
   if (!apiKey) return res.status(400).json({ error: 'No API key available' });
 
-  try {
-    let content;
-    if (actualProvider === 'openai') {
-      content = await callOpenAI({ apiKey, model: model || 'gpt-4o', messages, system });
-    } else {
-      content = await callAnthropic({ apiKey, model: model || 'claude-sonnet-4-6', messages, system });
-    }
-    res.json({ content });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+  const agentConfig = getAgentConfig(agentId);
+  const tools = getToolsForAgent(agentConfig);
+  const context = { braveApiKey: getBraveApiKey() };
 
-// POST /api/gateway/restart — restart the OpenClaw gateway via SSE stream
-router.post('/gateway/restart', (req, res) => {
+  // Set up SSE
   initSse(res);
 
-  const bin = getOpenclawBinary();
+  const onEvent = (event) => {
+    sendSse(res, event.type, event);
+  };
 
-  // Kill any existing gateway process then start a fresh one in the background.
-  // Running via sh -c '...' so the shell exits immediately after forking openclaw.
-  sendSse(res, 'log', 'Starting OpenClaw gateway...\n');
-
-  const proc = spawn('sh', ['-c', `pkill -f "openclaw gateway" 2>/dev/null; sleep 0.5; "${bin}" gateway &`], {
-    shell: false,
-  });
-
-  proc.stdout.on('data', d => sendSse(res, 'log', d.toString()));
-  proc.stderr.on('data', d => sendSse(res, 'log', d.toString()));
-
-  proc.on('error', (err) => {
-    sendSse(res, 'error', err.message);
+  try {
+    const loopFn = actualProvider === 'openai' ? runOpenAILoop : runAnthropicLoop;
+    await loopFn({
+      apiKey,
+      model: model || (actualProvider === 'openai' ? 'gpt-4o' : 'claude-sonnet-4-6'),
+      system,
+      messages,
+      tools,
+      maxTokens: 4096,
+      onEvent,
+      context,
+    });
+    sendSse(res, 'done', {});
+  } catch (err) {
+    sendSse(res, 'error', { message: err.message });
+  } finally {
     res.end();
-  });
-
-  proc.on('close', code => {
-    if (code === 0) {
-      sendSse(res, 'done', 'Gateway started — your agent will be live in a few seconds');
-    } else {
-      sendSse(res, 'error', `Could not start automatically (exit ${code}). Run this in your terminal: openclaw gateway`);
-    }
-    res.end();
-  });
+  }
 });
 
 export default router;

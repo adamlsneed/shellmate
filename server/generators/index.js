@@ -25,7 +25,7 @@ Skills placed in this folder are **local to this agent only** and override any g
 clawhub install <skill-id>
 
 # Or specify the workspace explicitly:
-clawhub install <skill-id> --workdir ~/.openclaw/workspace
+clawhub install <skill-id> --workdir ~/.shellmate/workspace
 \`\`\`
 
 ## Recommended skills for this agent
@@ -34,8 +34,8 @@ ${installLines}
 
 ## Notes
 
-- Skills here take precedence over bundled and managed (~/.openclaw/skills) skills of the same name.
-- After installing, restart the OpenClaw gateway (or start a new session) for the skill to take effect.
+- Skills here take precedence over bundled and managed (~/.shellmate/skills) skills of the same name.
+- After installing, restart Shellmate (or start a new session) for the skill to take effect.
 - Browse all available skills at https://clawhub.ai
 `;
 }

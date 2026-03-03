@@ -1,31 +1,37 @@
 import { Router } from 'express';
-import { execSync } from 'child_process';
-import { existsSync } from 'fs';
+import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { getOpenclawBinary } from '../utils/openclaw-binary.js';
+import { CONFIG_PATH, CONFIG_DIR, detectLegacyConfig, migrateLegacyConfig } from '../utils/config.js';
 
 const router = Router();
 
-// Check if the openclaw binary is available
+// GET /api/preflight — check if Shellmate is ready to run
 router.get('/preflight', (_req, res) => {
-  const bin = getOpenclawBinary();
+  const hasConfig = fs.existsSync(CONFIG_PATH);
+  const hasLegacy = detectLegacyConfig();
 
-  // Try running --version with the resolved binary
-  try {
-    const version = execSync(`"${bin}" --version`, { timeout: 5000, shell: true })
-      .toString()
-      .trim();
-    return res.json({ installed: true, version });
-  } catch {}
-
-  // Fallback: if ~/.openclaw/openclaw.json exists, assume it's usable
-  const configPath = path.join(os.homedir(), '.openclaw', 'openclaw.json');
-  if (existsSync(configPath)) {
-    return res.json({ installed: true, version: '(version unknown)' });
+  if (hasConfig) {
+    return res.json({ ready: true, needsMigration: false, hasLegacy: false });
   }
 
-  res.json({ installed: false, version: null });
+  if (hasLegacy) {
+    return res.json({ ready: false, needsMigration: true, hasLegacy: true });
+  }
+
+  // Nothing exists — create empty config dir so the app can proceed
+  fs.mkdirSync(CONFIG_DIR, { recursive: true });
+  return res.json({ ready: true, needsMigration: false, hasLegacy: false });
+});
+
+// POST /api/preflight/migrate — migrate legacy ~/.openclaw/ config
+router.post('/preflight/migrate', (_req, res) => {
+  try {
+    migrateLegacyConfig();
+    res.json({ ok: true, message: 'Migration complete' });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 export default router;

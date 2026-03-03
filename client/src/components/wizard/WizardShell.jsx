@@ -11,7 +11,7 @@ import DoneStep from './DoneStep.jsx';
 
 const PHASES = [ConversationPhase, ReviewStep, GenerateStep, CapabilitiesStep, DoneStep];
 
-export default function WizardShell() {
+export default function WizardShell({ onComplete }) {
   const phase = useTeamSpecStore(s => s.phase);
   const reset = useTeamSpecStore(s => s.reset);
   const resetCount = useTeamSpecStore(s => s.resetCount);
@@ -75,7 +75,7 @@ export default function WizardShell() {
       {/* Active phase */}
       <div className="relative flex-1 min-h-0">
         <div ref={scrollRef} className="h-full overflow-y-auto flex flex-col px-6 py-4">
-          <ActivePhase key={resetCount} />
+          <ActivePhase key={resetCount} onComplete={onComplete} />
         </div>
         {/* Fade hint when more content below */}
         {canScroll && (
