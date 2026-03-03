@@ -2,25 +2,15 @@ import { Router } from 'express';
 import fs from 'fs';
 import path from 'path';
 import { expandHome } from '../utils/paths.js';
-import { readConfig, backupTimestamp } from '../utils/config.js';
+import { backupTimestamp } from '../utils/config.js';
+import { resolveAgentWorkspace } from '../utils/workspace.js';
 
 const router = Router();
 
-function resolveAgentWorkspace(agentId, cfg) {
-  const existing = (cfg.agents?.list || []).find(a => a.id === agentId);
-  if (existing?.workspace) return existing.workspace;
-  // Agent exists but has no explicit workspace — uses agents.defaults.workspace
-  if (existing) return cfg.agents?.defaults?.workspace || '~/.shellmate/workspace';
-  // New agent
-  return `~/.shellmate/workspace-${agentId}`;
-}
-
 router.get('/check-paths', (req, res) => {
   const agents = (req.query.agents || '').split(',').filter(Boolean);
-  const cfg = readConfig();
   const conflicts = agents.map(agentId => {
-    const ws = resolveAgentWorkspace(agentId, cfg);
-    const p = expandHome(ws);
+    const p = resolveAgentWorkspace(agentId);
     return { agentId, path: p, exists: fs.existsSync(p) };
   });
   res.json({ conflicts });

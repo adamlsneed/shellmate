@@ -16,6 +16,14 @@ export function normalizeModel(model) {
   return model;
 }
 
+/**
+ * Normalize provider name — handles legacy 'openclaw' and new 'default' aliases.
+ */
+export function normalizeProvider(provider) {
+  if (provider === 'default' || provider === 'openclaw') return 'anthropic';
+  return provider;
+}
+
 export function resolveApiKey(provider, clientKey) {
   if (clientKey) return clientKey;
   if (provider === 'anthropic') return process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_CODE_OAUTH_TOKEN || null;

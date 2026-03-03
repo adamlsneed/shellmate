@@ -1,123 +1,26 @@
 import { useState, useRef, useEffect } from 'react';
 import { useTeamSpecStore } from '../../store/teamSpec.js';
-import { useAIConfig } from '../../store/aiConfig.js';
+import { useSSEChat } from '../../hooks/useSSEChat.js';
+import { useScrollToBottom, useAutofocus } from '../../hooks/useChatUI.js';
 import { MessageBubble } from '../common/MessageBubble.jsx';
 import { BouncingDots } from '../common/LoadingSpinner.jsx';
 import ToolCallDisplay from '../chat/ToolCallDisplay.jsx';
 
 // ---- Agent chat preview (with SSE + tool execution) -------------------------
 function AgentChat() {
-  const { provider, apiKey, model, envKey } = useAIConfig();
   const { teamSpec } = useTeamSpecStore();
   const agent = teamSpec.agent;
-
-  const [chatItems, setChatItems] = useState([]);
-  const [apiMessages, setApiMessages] = useState([]);
+  const { chatItems, loading, error, sendMessage } = useSSEChat();
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const bottomRef = useRef(null);
-  const inputRef = useRef(null);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatItems, loading]);
+  const bottomRef = useScrollToBottom([chatItems, loading]);
+  const [inputRef, focusInput] = useAutofocus();
 
   async function send() {
     const text = input.trim();
     if (!text || loading) return;
     setInput('');
-    setError('');
-
-    const userMsg = { role: 'user', content: text };
-    const nextApiMessages = [...apiMessages, userMsg];
-    setApiMessages(nextApiMessages);
-    setChatItems(prev => [...prev, { type: 'user', content: text }]);
-    setLoading(true);
-
-    try {
-      const res = await fetch('/api/agent-chat/main', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: nextApiMessages,
-          ...(envKey ? {} : { apiKey }),
-          provider,
-          model,
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Chat failed');
-      }
-
-      // Parse SSE stream
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let currentText = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop();
-
-        for (const line of lines) {
-          if (!line.startsWith('data:')) continue;
-          try {
-            const { type, data } = JSON.parse(line.slice(5).trim());
-
-            if (type === 'text') {
-              currentText += data.content;
-              setChatItems(prev => {
-                const next = [...prev];
-                const lastIdx = next.length - 1;
-                if (lastIdx >= 0 && next[lastIdx].type === 'assistant') {
-                  next[lastIdx] = { ...next[lastIdx], content: currentText };
-                } else {
-                  next.push({ type: 'assistant', content: currentText });
-                }
-                return next;
-              });
-            }
-
-            if (type === 'tool_call') {
-              setChatItems(prev => [
-                ...prev,
-                { type: 'tool_call', id: data.id, name: data.name, input: data.input, isExecuting: true },
-              ]);
-            }
-
-            if (type === 'tool_result') {
-              setChatItems(prev =>
-                prev.map(item =>
-                  item.type === 'tool_call' && item.id === data.id
-                    ? { ...item, result: data.result, isExecuting: false }
-                    : item
-                )
-              );
-              currentText = '';
-            }
-
-            if (type === 'error') {
-              setError(data.message || 'An error occurred');
-            }
-          } catch {}
-        }
-      }
-
-      if (currentText) {
-        setApiMessages(prev => [...prev, { role: 'assistant', content: currentText }]);
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
+    await sendMessage(text);
+    focusInput();
   }
 
   function handleKeyDown(e) {

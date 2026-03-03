@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
-import { useAIConfig } from '../../store/aiConfig.js';
+import { useState } from 'react';
+import { useSSEChat } from '../../hooks/useSSEChat.js';
+import { useScrollToBottom, useAutofocus } from '../../hooks/useChatUI.js';
 import { MessageBubble } from '../common/MessageBubble.jsx';
 import { BouncingDots } from '../common/LoadingSpinner.jsx';
 import ToolCallDisplay from './ToolCallDisplay.jsx';
@@ -9,150 +10,17 @@ import ToolCallDisplay from './ToolCallDisplay.jsx';
  * Streams SSE events from /api/agent-chat/main with tool execution.
  */
 export default function ChatApp({ onSettings }) {
-  const { provider, apiKey, model, envKey } = useAIConfig();
-
-  // Each item: { type: 'user'|'assistant'|'tool_call'|'tool_result', ... }
-  const [chatItems, setChatItems] = useState([]);
-  // Messages in Anthropic/OpenAI format for API
-  const [apiMessages, setApiMessages] = useState([]);
+  const { chatItems, loading, error, sendMessage } = useSSEChat();
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [agentName, setAgentName] = useState('Shellmate');
-
-  const bottomRef = useRef(null);
-  const inputRef = useRef(null);
-
-  // Load agent name from workspace
-  useEffect(() => {
-    fetch('/api/setup-status')
-      .then(r => r.json())
-      .then(data => {
-        if (data.setupComplete) {
-          // Try to get agent name from config
-          fetch('/api/config')
-            .then(r => r.json())
-            .then(cfg => {
-              // Agent name isn't in config, but we can load it from workspace SOUL.md
-              // For now just use a sensible default
-            })
-            .catch(() => {});
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatItems, loading]);
-
-  const parseSseStream = useCallback(async (response) => {
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let currentText = '';
-    const toolCalls = new Map(); // id → { name, input, result }
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop();
-
-      for (const line of lines) {
-        if (!line.startsWith('data:')) continue;
-        try {
-          const { type, data } = JSON.parse(line.slice(5).trim());
-
-          if (type === 'text') {
-            currentText += data.content;
-            setChatItems(prev => {
-              const next = [...prev];
-              // Update or add the last assistant text item
-              const lastIdx = next.length - 1;
-              if (lastIdx >= 0 && next[lastIdx].type === 'assistant') {
-                next[lastIdx] = { ...next[lastIdx], content: currentText };
-              } else {
-                next.push({ type: 'assistant', content: currentText });
-              }
-              return next;
-            });
-          }
-
-          if (type === 'tool_call') {
-            toolCalls.set(data.id, { name: data.name, input: data.input });
-            setChatItems(prev => [
-              ...prev,
-              { type: 'tool_call', id: data.id, name: data.name, input: data.input, isExecuting: true },
-            ]);
-          }
-
-          if (type === 'tool_result') {
-            const tc = toolCalls.get(data.id);
-            if (tc) tc.result = data.result;
-            setChatItems(prev =>
-              prev.map(item =>
-                item.type === 'tool_call' && item.id === data.id
-                  ? { ...item, result: data.result, isExecuting: false }
-                  : item
-              )
-            );
-            // After tool result, the API will send more text — reset tracker
-            currentText = '';
-          }
-
-          if (type === 'error') {
-            setError(data.message || 'An error occurred');
-          }
-        } catch {}
-      }
-    }
-
-    return currentText;
-  }, []);
+  const bottomRef = useScrollToBottom([chatItems, loading]);
+  const [inputRef, focusInput] = useAutofocus();
 
   async function send() {
     const text = input.trim();
     if (!text || loading) return;
     setInput('');
-    setError('');
-
-    const userMsg = { role: 'user', content: text };
-    const nextApiMessages = [...apiMessages, userMsg];
-    setApiMessages(nextApiMessages);
-    setChatItems(prev => [...prev, { type: 'user', content: text }]);
-    setLoading(true);
-
-    try {
-      const res = await fetch('/api/agent-chat/main', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: nextApiMessages,
-          ...(envKey ? {} : { apiKey }),
-          provider,
-          model,
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Chat failed');
-      }
-
-      const finalText = await parseSseStream(res);
-
-      // Add assistant response to API messages for context
-      if (finalText) {
-        setApiMessages(prev => [...prev, { role: 'assistant', content: finalText }]);
-      }
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
+    await sendMessage(text);
+    focusInput();
   }
 
   function handleKeyDown(e) {
@@ -167,7 +35,7 @@ export default function ChatApp({ onSettings }) {
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-3 border-b border-gray-800 shrink-0">
         <div className="flex items-center gap-3">
-          <span className="text-lg font-bold text-shell-400">🐢 {agentName}</span>
+          <span className="text-lg font-bold text-shell-400">🐢 Shellmate</span>
         </div>
         <button
           onClick={onSettings}

@@ -31,7 +31,7 @@ export const useAIConfig = create((set, get) => ({
   model: saved.model || 'claude-sonnet-4-6',
   configured: saved.configured || false,
   // true = using server-side env key, no client API key needed
-  envKey: saved.envKey || saved.openclawEnv || false,
+  envKey: saved.envKey || false,
 
   setProvider: (provider) => { set({ provider }); save(get()); },
   setApiKey: (apiKey) => { set({ apiKey }); save(get()); },

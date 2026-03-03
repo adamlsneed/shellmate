@@ -2,7 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useTeamSpecStore } from '../../store/teamSpec.js';
 import { useAIConfig } from '../../store/aiConfig.js';
 import { useWizard } from '../../hooks/useWizard.js';
+import { useScrollToBottom, useAutofocus } from '../../hooks/useChatUI.js';
 import AISetup from '../ai/AISetup.jsx';
+import { MessageBubble } from '../common/MessageBubble.jsx';
 import { BouncingDots } from '../common/LoadingSpinner.jsx';
 
 // ── System prompt ────────────────────────────────────────────────────────────
@@ -118,38 +120,6 @@ function stripSpec(content) {
   return content.replace(/<shellmate-spec[\s\S]*?<\/shellmate-spec>/g, '').trim();
 }
 
-// ── Message bubble ───────────────────────────────────────────────────────────
-
-function Bubble({ msg }) {
-  const isUser = msg.role === 'user';
-  const text = msg.role === 'assistant' ? stripSpec(msg.content) : msg.content;
-  if (!text) return null;
-  const lines = text.split('\n');
-  return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
-      {!isUser && (
-        <div className="w-8 h-8 rounded-full bg-shell-700 flex items-center justify-center text-sm mr-3 mt-0.5 shrink-0">
-          🐢
-        </div>
-      )}
-      <div className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-        isUser
-          ? 'bg-shell-700 text-white rounded-br-sm'
-          : 'bg-gray-800 text-gray-100 rounded-bl-sm'
-      }`}>
-        {lines.map((line, i) => (
-          <span key={i}>{line}{i < lines.length - 1 && <br />}</span>
-        ))}
-      </div>
-      {isUser && (
-        <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-sm ml-3 mt-0.5 shrink-0">
-          👤
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── Main component ───────────────────────────────────────────────────────────
 
 export default function ConversationPhase() {
@@ -166,8 +136,8 @@ export default function ConversationPhase() {
   const [error, setError] = useState('');
   const [showSetup, setShowSetup] = useState(false);
   const initialized = useRef(false);
-  const bottomRef = useRef(null);
-  const inputRef = useRef(null);
+  const bottomRef = useScrollToBottom([conversationMessages, loading]);
+  const [inputRef, focusInput] = useAutofocus();
 
   // Auto-start: AI sends first message once configured
   useEffect(() => {
@@ -176,10 +146,6 @@ export default function ConversationPhase() {
       sendToAI("Hi! I'd like to set up my Mac helper.", []);
     }
   }, [configured]);
-
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [conversationMessages, loading]);
 
   async function sendToAI(userText, history) {
     const userMsg = { role: 'user', content: userText };
@@ -221,7 +187,7 @@ export default function ConversationPhase() {
       setError(err.message);
     } finally {
       setLoading(false);
-      setTimeout(() => inputRef.current?.focus(), 100);
+      focusInput();
     }
   }
 
@@ -268,7 +234,13 @@ export default function ConversationPhase() {
         )}
 
         {conversationMessages.map((msg, i) => (
-          <Bubble key={i} msg={msg} />
+          <MessageBubble
+            key={i}
+            role={msg.role}
+            content={msg.content}
+            showAvatar
+            transformContent={msg.role === 'assistant' ? stripSpec : undefined}
+          />
         ))}
 
         {loading && (

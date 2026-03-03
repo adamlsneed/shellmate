@@ -1,29 +1,21 @@
 import { Router } from 'express';
 import { existsSync, readFileSync } from 'fs';
 import path from 'path';
-import { expandHome } from '../utils/paths.js';
 import { readConfig } from '../utils/config.js';
-import { resolveApiKey } from '../utils/ai-clients.js';
+import { normalizeProvider, resolveApiKey } from '../utils/ai-clients.js';
+import { resolveAgentWorkspace } from '../utils/workspace.js';
 import { initSse, sendSse } from '../utils/sse.js';
 import { getToolsForAgent } from '../tools/definitions.js';
 import { runAnthropicLoop, runOpenAILoop } from '../tools/loop.js';
 
 const router = Router();
 
-function resolveAgentWorkspace(agentId) {
-  const cfg = readConfig();
-  const existing = (cfg.agents?.list || []).find(a => a.id === agentId);
-  if (existing?.workspace) return expandHome(existing.workspace);
-  if (existing) return expandHome(cfg.agents?.defaults?.workspace || '~/.shellmate/workspace');
-  return expandHome(`~/.shellmate/workspace-${agentId}`);
-}
-
 function readWsFile(workspace, filename) {
   const p = path.join(workspace, filename);
   return existsSync(p) ? readFileSync(p, 'utf8').trim() : null;
 }
 
-function buildSystemPrompt(agentId, workspace) {
+function buildSystemPrompt(workspace) {
   const soul     = readWsFile(workspace, 'SOUL.md');
   const agents   = readWsFile(workspace, 'AGENTS.md');
   const user     = readWsFile(workspace, 'USER.md');
@@ -58,9 +50,9 @@ router.post('/agent-chat/:agentId', async (req, res) => {
   const { messages, apiKey: clientApiKey, provider = 'anthropic', model } = req.body;
 
   const workspace = resolveAgentWorkspace(agentId);
-  const system = buildSystemPrompt(agentId, workspace);
+  const system = buildSystemPrompt(workspace);
 
-  const actualProvider = (provider === 'default' || provider === 'openclaw') ? 'anthropic' : provider;
+  const actualProvider = normalizeProvider(provider);
   const apiKey = resolveApiKey(actualProvider, clientApiKey);
   if (!apiKey) return res.status(400).json({ error: 'No API key available' });
 
@@ -68,7 +60,6 @@ router.post('/agent-chat/:agentId', async (req, res) => {
   const tools = getToolsForAgent(agentConfig);
   const context = { braveApiKey: getBraveApiKey() };
 
-  // Set up SSE
   initSse(res);
 
   const onEvent = (event) => {
