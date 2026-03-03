@@ -33,7 +33,7 @@ export default function FileTreePanel({ files }) {
         {selectedFile ? (
           <>
             <p className="text-xs text-gray-500 mb-2 font-mono truncate">{selectedFile.path}</p>
-            <pre className="text-xs text-gray-300 bg-gray-900 rounded p-3 overflow-auto whitespace-pre-wrap">
+            <pre className="text-xs text-gray-300 bg-navy-900 rounded p-3 overflow-auto whitespace-pre-wrap">
               {selectedFile.content}
             </pre>
           </>

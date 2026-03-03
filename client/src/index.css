@@ -4,14 +4,14 @@
 
 @layer base {
   body {
-    @apply bg-gray-950 text-gray-100 min-h-screen;
+    @apply bg-navy-950 text-gray-100 min-h-screen;
   }
 }
 
 @layer utilities {
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: #374151 transparent;
+    scrollbar-color: #2a3040 transparent;
   }
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
@@ -20,7 +20,7 @@
     background: transparent;
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background: #374151;
+    background: #2a3040;
     border-radius: 3px;
   }
 }

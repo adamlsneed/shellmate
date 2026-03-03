@@ -89,7 +89,7 @@ function GatewayPanel() {
       </div>
 
       {/* Manual command -- always visible */}
-      <div className="flex items-center justify-between bg-gray-900 border border-gray-800 rounded-lg px-3 py-2">
+      <div className="flex items-center justify-between bg-navy-900 border border-gray-800 rounded-lg px-3 py-2">
         <code className="text-xs text-shell-400 font-mono">openclaw gateway</code>
         <button
           onClick={copyCommand}
@@ -102,7 +102,7 @@ function GatewayPanel() {
       {log && (
         <pre
           ref={logRef}
-          className="mt-2 max-h-20 bg-gray-950 border border-gray-800 rounded-lg p-2 text-xs font-mono text-green-400 overflow-y-auto scrollbar-thin whitespace-pre-wrap"
+          className="mt-2 max-h-20 bg-navy-950 border border-gray-800 rounded-lg p-2 text-xs font-mono text-green-400 overflow-y-auto scrollbar-thin whitespace-pre-wrap"
         >
           {log}
         </pre>
@@ -228,8 +228,8 @@ function ValidationOutput({ output, isRunning }) {
   if (!output && !isRunning) return null;
 
   return (
-    <div className="bg-gray-950 border border-gray-700 rounded-xl overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-800 bg-gray-900">
+    <div className="bg-navy-950 border border-gray-700 rounded-xl overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-800 bg-navy-900">
         <div className="w-3 h-3 rounded-full bg-red-500" />
         <div className="w-3 h-3 rounded-full bg-yellow-500" />
         <div className="w-3 h-3 rounded-full bg-green-500" />
@@ -335,7 +335,7 @@ export default function DoneStep() {
       <GatewayPanel />
 
       {/* ---- Chat preview ---- */}
-      <div className="flex-1 min-h-0 border border-gray-800 rounded-xl p-4 bg-gray-900/20">
+      <div className="flex-1 min-h-0 border border-gray-800 rounded-xl p-4 bg-navy-900/20">
         <AgentChat />
       </div>
 

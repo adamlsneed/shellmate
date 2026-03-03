@@ -34,7 +34,7 @@ function InlineEdit({ value, onSave, multiline, className = '' }) {
         onBlur={commit}
         onKeyDown={handleKey}
         rows={multiline ? 3 : undefined}
-        className={`bg-gray-900 border border-shell-500 rounded px-2 py-1 text-sm text-gray-100 w-full focus:outline-none ${className}`}
+        className={`bg-navy-900 border border-shell-500 rounded px-2 py-1 text-sm text-gray-100 w-full focus:outline-none ${className}`}
       />
     );
   }
@@ -116,7 +116,7 @@ function EditableRuleList({ rules, onChange, label }) {
             onBlur={commitAdd}
             onKeyDown={handleAddKey}
             placeholder="e.g. Never delete files without asking"
-            className="bg-gray-900 border border-shell-500 rounded px-2 py-1 text-xs text-gray-100 w-full focus:outline-none"
+            className="bg-navy-900 border border-shell-500 rounded px-2 py-1 text-xs text-gray-100 w-full focus:outline-none"
           />
         </div>
       ) : (
@@ -294,7 +294,7 @@ export default function ReviewStep() {
           {showRaw ? '▾ Hide technical details' : '▸ Show technical details'}
         </button>
         {showRaw && (
-          <pre className="mt-2 bg-gray-900 border border-gray-700 rounded-xl p-4 text-xs text-green-400 font-mono overflow-auto max-h-64 scrollbar-thin">
+          <pre className="mt-2 bg-navy-900 border border-gray-700 rounded-xl p-4 text-xs text-green-400 font-mono overflow-auto max-h-64 scrollbar-thin">
             {JSON.stringify(teamSpec, null, 2)}
           </pre>
         )}

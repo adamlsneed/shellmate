@@ -169,7 +169,7 @@ export default function AISetup({ onDone }) {
   // ── Loading ──────────────────────────────────────────────────────────────────
   if (envStatus === null) {
     return (
-      <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 text-center">
+      <div className="bg-navy-900 border border-gray-700 rounded-xl p-6 text-center">
         <p className="text-gray-500 text-sm">Checking your setup...</p>
       </div>
     );
@@ -178,7 +178,7 @@ export default function AISetup({ onDone }) {
   const cfg = PROVIDERS[provider];
 
   return (
-    <div className="bg-gray-900 border border-gray-700 rounded-xl p-6 max-w-md">
+    <div className="bg-navy-900 border border-gray-700 rounded-xl p-6 max-w-md">
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <p className="text-sm font-semibold text-white mb-1">Connect an AI model</p>

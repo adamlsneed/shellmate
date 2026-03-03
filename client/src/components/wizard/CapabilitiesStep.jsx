@@ -28,7 +28,7 @@ function Field({ label, value, onChange, placeholder, type = 'text', hint }) {
         value={value}
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-shell-500"
+        className="w-full bg-navy-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-shell-500"
       />
       {hint && <p className="text-xs text-gray-600 mt-1">{hint}</p>}
     </div>
@@ -258,7 +258,7 @@ export default function CapabilitiesStep() {
           </div>
           <div className="space-y-3">
             {recommendedSkills.map(skill => (
-              <div key={skill.id} className="flex items-start gap-3 bg-gray-900/40 rounded-lg p-3">
+              <div key={skill.id} className="flex items-start gap-3 bg-navy-900/40 rounded-lg p-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-medium text-white">{skill.name}</span>
@@ -315,7 +315,7 @@ export default function CapabilitiesStep() {
                   className={`text-left p-3 rounded-lg border text-xs transition-colors ${
                     memoryMode === opt.id
                       ? 'border-shell-500 bg-shell-900/30 text-white'
-                      : 'border-gray-700 bg-gray-900/30 text-gray-400 hover:border-gray-600'
+                      : 'border-gray-700 bg-navy-900/30 text-gray-400 hover:border-gray-600'
                   }`}
                 >
                   <div className="font-semibold mb-0.5 flex items-center gap-1.5">
@@ -410,7 +410,7 @@ export default function CapabilitiesStep() {
           <p className="text-xs text-gray-400">
             Install the Google Calendar skill from ClawHub:
           </p>
-          <code className="text-xs text-gray-500 bg-gray-900/60 rounded px-2 py-1 block">
+          <code className="text-xs text-gray-500 bg-navy-900/60 rounded px-2 py-1 block">
             clawhub install google-calendar
           </code>
           <p className="text-xs text-gray-600">
