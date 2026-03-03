@@ -1,0 +1,49 @@
+{
+  "name": "shellmate",
+  "version": "0.0.1",
+  "description": "Set up a personal AI helper for your Mac",
+  "type": "module",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "NODE_ENV=development node server/dev.js",
+    "build": "cd client && vite build",
+    "start": "NODE_ENV=production node server/start.js",
+    "preview": "npm run build && npm start",
+    "electron:dev": "NODE_ENV=development electron electron/main.js",
+    "electron:build": "npm run build && electron-builder",
+    "electron:pack": "npm run build && electron-builder --dir"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "shellmate",
+    "mac",
+    "ai",
+    "assistant",
+    "helper",
+    "automation"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adamlsneed/shellmate.git"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.3",
+    "express": "^4.18.2",
+    "open": "^9.1.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.17",
+    "electron": "^33.3.1",
+    "electron-builder": "^25.1.8",
+    "postcss": "^8.4.35",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tailwindcss": "^3.4.1",
+    "vite": "^5.0.12",
+    "zustand": "^4.5.0"
+  }
+}

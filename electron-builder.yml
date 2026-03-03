@@ -1,0 +1,26 @@
+appId: com.shellmate.app
+productName: Shellmate
+directories:
+  output: release
+files:
+  - electron/**/*
+  - server/**/*
+  - dist/**/*
+  - package.json
+  - resources/**/*
+asarUnpack:
+  - dist/**/*
+  - resources/**/*
+extraResources:
+  - from: resources/openclaw
+    to: openclaw
+    filter:
+      - "**/*"
+publish:
+  provider: github
+  releaseType: release
+mac:
+  target: dmg
+  category: public.app-category.productivity
+  icon: electron/icons/icon.icns
+  identity: null
