@@ -114,7 +114,7 @@ export const useTeamSpecStore = create((set, get) => ({
           webSearch: false,
           webFetch: true,
           memory: 'core',
-          tools: { deny: [] },
+          tools: { deny: ['exec'] },  // Restrict shell exec by default for non-technical users
         },
       };
       set({ teamSpec: updated });

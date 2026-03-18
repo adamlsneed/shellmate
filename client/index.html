@@ -6,8 +6,7 @@
     <title>Shellmate</title>
     <script>
       // Apply theme before first paint to avoid flash
-      const theme = localStorage.getItem('shellmate-theme') || 'light';
-      if (theme === 'dark') document.documentElement.classList.add('dark');
+      try { if (localStorage.getItem('shellmate-theme') === 'dark') document.documentElement.classList.add('dark'); } catch {}
     </script>
   </head>
   <body class="bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors">

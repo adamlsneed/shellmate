@@ -39,8 +39,12 @@ function shortPath(p) {
 // Theme mode store (persisted to localStorage)
 const THEME_KEY = 'shellmate-theme';
 
+function safeGetTheme() {
+  try { return localStorage.getItem(THEME_KEY) || 'light'; } catch { return 'light'; }
+}
+
 export const useThemeStore = create((set) => ({
-  mode: localStorage.getItem(THEME_KEY) || 'light',
+  mode: safeGetTheme(),
   setMode: (mode) => {
     localStorage.setItem(THEME_KEY, mode);
     document.documentElement.classList.toggle('dark', mode === 'dark');
@@ -55,5 +59,5 @@ export const useThemeStore = create((set) => ({
 }));
 
 // Initialize theme on import
-const saved = localStorage.getItem(THEME_KEY) || 'light';
+const saved = safeGetTheme();
 document.documentElement.classList.toggle('dark', saved === 'dark');

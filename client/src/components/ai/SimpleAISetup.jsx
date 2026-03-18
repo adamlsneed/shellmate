@@ -13,9 +13,9 @@ export default function SimpleAISetup({ onDone }) {
     fetch('/api/chat/env-status')
       .then(r => r.json())
       .then(data => {
-        if (data.anthropicKey || data.openaiKey) {
-          const provider = data.anthropicKey ? 'anthropic' : 'openai';
-          const model = data.anthropicKey ? 'claude-sonnet-4-6' : 'gpt-4o';
+        if (data.available) {
+          const provider = data.provider || 'anthropic';
+          const model = data.model || 'claude-sonnet-4-6';
           configure({ provider, apiKey: '', model, envKey: true });
           onDone();
         }
