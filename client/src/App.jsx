@@ -3,9 +3,11 @@ import PreflightCheck from './components/PreflightCheck.jsx';
 import WizardShell from './components/wizard/WizardShell.jsx';
 import SimpleSetup from './components/wizard/SimpleSetup.jsx';
 import ChatApp from './components/chat/ChatApp.jsx';
+import SettingsPanel from './components/settings/SettingsPanel.jsx';
 
 export default function App() {
   const [state, setState] = useState('loading'); // loading | preflight | wizard | chat
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     checkSetup();
@@ -43,5 +45,15 @@ export default function App() {
   }
 
   // chat
-  return <ChatApp onSettings={() => setState('wizard')} />;
+  return (
+    <>
+      <ChatApp onSettings={() => setShowSettings(true)} />
+      {showSettings && (
+        <SettingsPanel
+          onClose={() => setShowSettings(false)}
+          onRunWizard={() => { setShowSettings(false); setState('wizard'); }}
+        />
+      )}
+    </>
+  );
 }
