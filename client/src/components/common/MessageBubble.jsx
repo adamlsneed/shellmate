@@ -1,34 +1,35 @@
 /**
- * Shared message bubble component.
- * @param {string} role - 'user' or 'assistant'
- * @param {string} content - message text
- * @param {boolean} [showAvatar] - show emoji avatar (default false)
- * @param {function} [transformContent] - optional content transform (e.g. strip spec blocks)
+ * @param {{ role: 'user'|'assistant', content: string, showAvatar?: boolean, transformContent?: function }} props
  */
 export function MessageBubble({ role, content, showAvatar = false, transformContent }) {
+  const display = transformContent ? transformContent(content) : content;
+  if (!display) return null;
+  const lines = display.split('\n');
   const isUser = role === 'user';
-  const text = transformContent ? transformContent(content) : content;
-  if (!text) return null;
-  const lines = text.split('\n');
 
   return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} ${showAvatar ? 'mb-4' : ''}`}>
-      {showAvatar && !isUser && (
-        <div className="w-8 h-8 rounded-full bg-shell-700 flex items-center justify-center text-sm mr-3 mt-0.5 shrink-0">
+    <div className={`flex items-end gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
+      {!isUser && showAvatar && (
+        <div className="w-10 h-10 rounded-full bg-[var(--accent)] flex items-center justify-center text-xl flex-shrink-0">
           🐢
         </div>
       )}
-      <div className={`max-w-[${showAvatar ? '75' : '80'}%] rounded-2xl px-${showAvatar ? '4' : '3'} py-${showAvatar ? '3' : '2'} text-sm leading-relaxed ${
-        isUser
-          ? 'bg-shell-700 text-white rounded-br-sm'
-          : 'bg-gray-800 text-gray-100 rounded-bl-sm'
-      }`}>
+      <div
+        className={`max-w-[85%] px-5 py-4 text-body leading-relaxed whitespace-pre-wrap ${
+          isUser
+            ? 'bg-[var(--user-bubble)] text-[var(--user-bubble-text)] rounded-2xl rounded-br-md'
+            : 'bg-[var(--assistant-bubble)] text-[var(--assistant-bubble-text)] rounded-2xl rounded-bl-md border border-[var(--border)]'
+        }`}
+      >
         {lines.map((line, i) => (
-          <span key={i}>{line}{i < lines.length - 1 && <br />}</span>
+          <span key={i}>
+            {line}
+            {i < lines.length - 1 && <br />}
+          </span>
         ))}
       </div>
-      {showAvatar && isUser && (
-        <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-sm ml-3 mt-0.5 shrink-0">
+      {isUser && showAvatar && (
+        <div className="w-10 h-10 rounded-full bg-[var(--accent-light)] flex items-center justify-center text-xl flex-shrink-0">
           👤
         </div>
       )}
