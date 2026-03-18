@@ -8,6 +8,63 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
+// Sensitive paths that the AI should never access
+const BLOCKED_PATHS = [
+  '.ssh', '.gnupg', '.aws', '.config/gcloud', '.azure',
+  '.npmrc', '.pypirc', '.docker', '.kube',
+  'Library/Keychains',
+];
+
+function isPathBlocked(filePath) {
+  const resolved = filePath.startsWith('~')
+    ? path.join(os.homedir(), filePath.slice(1))
+    : path.resolve(filePath);
+  const home = os.homedir();
+
+  // Block system directories
+  if (resolved.startsWith('/etc/') || resolved.startsWith('/var/') ||
+      resolved.startsWith('/System/') || resolved.startsWith('/Library/') ||
+      resolved.startsWith('/usr/') || resolved.startsWith('/bin/') ||
+      resolved.startsWith('/sbin/')) {
+    return 'Access to system directories is not allowed';
+  }
+
+  // Block sensitive dotfiles/directories
+  for (const blocked of BLOCKED_PATHS) {
+    if (resolved.startsWith(path.join(home, blocked))) {
+      return `Access to ~/${blocked} is not allowed for security`;
+    }
+  }
+
+  return null;
+}
+
+function isUrlBlocked(urlStr) {
+  try {
+    const parsed = new URL(urlStr);
+    // Only allow http and https
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return 'Only http and https URLs are allowed';
+    }
+    const host = parsed.hostname;
+    // Block localhost variants
+    if (host === 'localhost' || host === '127.0.0.1' || host === '::1' || host === '0.0.0.0') {
+      return 'Requests to localhost are not allowed';
+    }
+    // Block private IP ranges
+    const parts = host.split('.').map(Number);
+    if (parts.length === 4 && !parts.some(isNaN)) {
+      if (parts[0] === 10) return 'Requests to private networks are not allowed';
+      if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return 'Requests to private networks are not allowed';
+      if (parts[0] === 192 && parts[1] === 168) return 'Requests to private networks are not allowed';
+      if (parts[0] === 169 && parts[1] === 254) return 'Requests to link-local addresses are not allowed';
+    }
+    return null;
+  } catch {
+    return 'Invalid URL';
+  }
+}
+
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const MAX_OUTPUT = 100_000; // truncate shell output at 100k chars
 
@@ -17,6 +74,7 @@ function truncate(str, max = MAX_OUTPUT) {
 }
 
 export function shellExec({ command, cwd, timeout = 30000 }) {
+  timeout = Math.min(Math.max(timeout || 30000, 1000), 60000);
   return new Promise((resolve) => {
     const opts = {
       cwd: cwd || os.homedir(),
@@ -37,6 +95,8 @@ export function shellExec({ command, cwd, timeout = 30000 }) {
 
 export function fileRead({ path: filePath }) {
   try {
+    const blocked = isPathBlocked(filePath);
+    if (blocked) return blocked;
     const resolved = filePath.startsWith('~')
       ? path.join(os.homedir(), filePath.slice(1))
       : filePath;
@@ -52,6 +112,8 @@ export function fileRead({ path: filePath }) {
 
 export function fileWrite({ path: filePath, content }) {
   try {
+    const blocked = isPathBlocked(filePath);
+    if (blocked) return blocked;
     const resolved = filePath.startsWith('~')
       ? path.join(os.homedir(), filePath.slice(1))
       : filePath;
@@ -65,6 +127,8 @@ export function fileWrite({ path: filePath, content }) {
 
 export function fileList({ path: dirPath, recursive = false }) {
   try {
+    const blocked = isPathBlocked(dirPath);
+    if (blocked) return blocked;
     const resolved = dirPath.startsWith('~')
       ? path.join(os.homedir(), dirPath.slice(1))
       : dirPath;
@@ -112,6 +176,8 @@ export async function webSearch({ query, count = 5 }, braveApiKey) {
 
 export async function webFetch({ url }) {
   try {
+    const blocked = isUrlBlocked(url);
+    if (blocked) return blocked;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 15000);
     const res = await fetch(url, {

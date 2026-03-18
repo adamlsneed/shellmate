@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Menu, dialog } from 'electron';
+import { app, BrowserWindow, Menu, dialog, shell } from 'electron';
 import { createServer } from '../server/index.js';
 
 let autoUpdater;
@@ -16,6 +16,7 @@ try {
 
 let mainWindow = null;
 let server = null;
+let expressAppRef = null;
 
 function checkForUpdates() {
   if (!autoUpdater) return;
@@ -108,7 +109,7 @@ const template = [
   }] : []),
 ];
 
-async function createWindow(port) {
+async function createWindow(port, expressApp) {
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -119,7 +120,23 @@ async function createWindow(port) {
     },
   });
 
-  mainWindow.loadURL(`http://localhost:${port}`);
+  const token = expressApp?.locals?.authToken || '';
+  mainWindow.loadURL(`http://localhost:${port}?token=${token}`);
+
+  // Prevent navigation away from the app
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (!url.startsWith(`http://localhost:${port}`)) {
+      event.preventDefault();
+    }
+  });
+
+  // Open external links in the system browser
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (!url.startsWith(`http://localhost:${port}`)) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -134,12 +151,13 @@ app.whenReady().then(async () => {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 
   const expressApp = await createServer();
+  expressAppRef = expressApp;
 
   // Listen on port 0 so the OS assigns a free port — avoids conflicts
   server = expressApp.listen(0, () => {
     const port = server.address().port;
     console.log(`Shellmate running on port ${port}`);
-    createWindow(port);
+    createWindow(port, expressApp);
   });
 
   setupAutoUpdater();
@@ -156,6 +174,6 @@ app.on('window-all-closed', () => {
 app.on('activate', () => {
   if (mainWindow === null && server) {
     const port = server.address().port;
-    createWindow(port);
+    createWindow(port, expressAppRef);
   }
 });

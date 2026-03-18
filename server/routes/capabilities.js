@@ -25,27 +25,27 @@ router.get('/capabilities', (_req, res) => {
       lancedb: {
         autoRecall:  lancedb.config?.autoRecall  ?? true,
         autoCapture: lancedb.config?.autoCapture ?? false,
-        embeddingApiKey: lancedb.config?.embedding?.apiKey || '',
+        embeddingApiKey: lancedb.config?.embedding?.apiKey ? '***' : '',
         embeddingModel:  lancedb.config?.embedding?.model  || 'text-embedding-3-small',
       },
     },
     webSearch: {
       enabled:  !!webSearch.provider,
       provider: webSearch.provider || 'brave',
-      braveApiKey:      webSearch.apiKey || '',
-      perplexityApiKey: webSearch.perplexity?.apiKey || '',
+      braveApiKey:      webSearch.apiKey ? '***' : '',
+      perplexityApiKey: webSearch.perplexity?.apiKey ? '***' : '',
     },
     webFetch: {
       enabled: webFetch.enabled !== false && !!cfg.browser?.enabled,
     },
     homeAssistant: {
       enabled: !!haSkill.env?.HA_TOKEN,
-      token: haSkill.env?.HA_TOKEN || '',
+      token: haSkill.env?.HA_TOKEN ? '***' : '',
       url:   haSkill.env?.HA_URL   || 'http://homeassistant.local:8123',
     },
     googlePlaces: {
       enabled: !!goPlaces.apiKey,
-      apiKey: goPlaces.apiKey || '',
+      apiKey: goPlaces.apiKey ? '***' : '',
     },
   });
 });

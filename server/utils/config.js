@@ -21,12 +21,15 @@ export function readConfig() {
 export function writeConfig(cfg) {
   fs.mkdirSync(path.dirname(CONFIG_PATH), { recursive: true });
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2), 'utf8');
+  try { fs.chmodSync(path.dirname(CONFIG_PATH), 0o700); } catch {}
+  fs.chmodSync(CONFIG_PATH, 0o600);
 }
 
 export function backupConfig() {
   if (fs.existsSync(CONFIG_PATH)) {
     const ts = backupTimestamp();
     fs.copyFileSync(CONFIG_PATH, `${CONFIG_PATH}.bak-${ts}`);
+    fs.chmodSync(`${CONFIG_PATH}.bak-${ts}`, 0o600);
   }
 }
 
