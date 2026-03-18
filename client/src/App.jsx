@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import PreflightCheck from './components/PreflightCheck.jsx';
 import WizardShell from './components/wizard/WizardShell.jsx';
+import SimpleSetup from './components/wizard/SimpleSetup.jsx';
 import ChatApp from './components/chat/ChatApp.jsx';
 
 export default function App() {
@@ -38,7 +39,7 @@ export default function App() {
   }
 
   if (state === 'wizard') {
-    return <WizardShell onComplete={() => setState('chat')} />;
+    return <SimpleSetup onComplete={() => setState('chat')} />;
   }
 
   // chat
