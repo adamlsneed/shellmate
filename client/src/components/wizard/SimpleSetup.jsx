@@ -3,9 +3,10 @@ import { useAIConfig } from '../../store/aiConfig.js';
 import { useTeamSpecStore } from '../../store/teamSpec.js';
 import SimpleAISetup from '../ai/SimpleAISetup.jsx';
 import ConversationPhase from './ConversationPhase.jsx';
+import SimpleCapabilities from './SimpleCapabilities.jsx';
 import { BigButton } from '../common/BigButton.jsx';
 
-const STEP = { AUTH: 0, CHAT: 1, FINISHING: 2, READY: 3 };
+const STEP = { AUTH: 0, CHAT: 1, FINISHING: 2, READY: 3, CAPABILITIES: 4 };
 
 export default function SimpleSetup({ onComplete }) {
   const { configured } = useAIConfig();
@@ -85,7 +86,19 @@ export default function SimpleSetup({ onComplete }) {
     );
   }
 
-  // Step 3: Ready!
+  // Step 4: Optional capabilities
+  if (step === STEP.CAPABILITIES) {
+    return (
+      <div className="min-h-screen bg-[var(--bg-primary)] overflow-y-auto">
+        <SimpleCapabilities
+          onDone={onComplete}
+          onSkip={onComplete}
+        />
+      </div>
+    );
+  }
+
+  // Step 3: Ready — choose to start chatting or set up more features
   if (step === STEP.READY) {
     const name = teamSpec.agent?.name?.replace("'s Helper", '') || 'friend';
     return (
@@ -95,11 +108,19 @@ export default function SimpleSetup({ onComplete }) {
           All set, {name}!
         </h1>
         <p className="text-body-lg text-[var(--text-secondary)] mb-8 max-w-md">
-          Shellmate is ready to help. Just type what you need — like talking to a helpful friend who's great with computers.
+          Shellmate is ready to help. You can start chatting right away, or set up extra features like web search and smart home control.
         </p>
-        <BigButton onClick={onComplete} className="px-12">
-          Start chatting
-        </BigButton>
+        <div className="w-full max-w-sm space-y-3">
+          <BigButton onClick={onComplete} className="w-full px-12">
+            Start chatting
+          </BigButton>
+          <button
+            onClick={() => setStep(STEP.CAPABILITIES)}
+            className="w-full px-6 py-4 rounded-friendly border-2 border-[var(--border)] text-body text-[var(--text-secondary)] hover:border-[var(--accent)] hover:text-[var(--text-primary)] transition-colors"
+          >
+            Set up extra features (web search, smart home, and more)
+          </button>
+        </div>
       </div>
     );
   }
