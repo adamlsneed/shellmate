@@ -4,8 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Shellmate</title>
+    <script>
+      // Apply theme before first paint to avoid flash
+      try { if (localStorage.getItem('shellmate-theme') === 'dark') document.documentElement.classList.add('dark'); } catch {}
+    </script>
   </head>
-  <body>
+  <body class="bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors">
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

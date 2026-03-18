@@ -1,4 +1,5 @@
 import express from 'express';
+import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import { existsSync } from 'fs';
@@ -17,6 +18,31 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export async function createServer() {
   const app = express();
   app.use(express.json({ limit: '10mb' }));
+
+  // Generate a random auth token for this session
+  const authToken = crypto.randomBytes(32).toString('hex');
+  app.locals.authToken = authToken;
+
+  // CORS + auth middleware for API routes
+  app.use('/api', (req, res, next) => {
+    // Set CORS headers
+    res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Shellmate-Token');
+
+    if (req.method === 'OPTIONS') return res.sendStatus(204);
+
+    // In dev mode, skip auth (localhost only)
+    if (process.env.NODE_ENV === 'development') return next();
+
+    // Require auth token on all API requests
+    const token = req.headers['x-shellmate-token'];
+    if (token !== authToken) {
+      return res.status(403).json({ error: 'Invalid or missing auth token' });
+    }
+
+    next();
+  });
 
   // API routes
   app.use('/api/generate', generateRoute);

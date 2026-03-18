@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { expandHome } from '../utils/paths.js';
 import { backupTimestamp } from '../utils/config.js';
 import { resolveAgentWorkspace } from '../utils/workspace.js';
@@ -29,6 +30,14 @@ router.post('/write', async (req, res) => {
         filePath = path.join(base, filePath);
       } else {
         filePath = expandHome(filePath);
+      }
+
+      // Security: ensure path resolves within ~/.shellmate/
+      const resolved = path.resolve(filePath);
+      const shellmateDir = path.join(os.homedir(), '.shellmate');
+      if (!resolved.startsWith(shellmateDir + path.sep) && resolved !== shellmateDir) {
+        errors.push({ path: file.path, error: 'Path must be within ~/.shellmate/' });
+        continue;
       }
 
       const dir = path.dirname(filePath);

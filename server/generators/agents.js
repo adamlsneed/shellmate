@@ -51,5 +51,19 @@ ${agent.escalation || '// TODO: define escalation rules'}
 ## Failure Behavior
 
 ${agent.failure || '// TODO: define failure behavior'}
-${safetySection}`;
+${safetySection}
+## Confirmation Required
+
+Before running any of these actions, ALWAYS ask the user first in plain language:
+- Deleting or moving files
+- Changing system settings (System Preferences / System Settings)
+- Installing or uninstalling software
+- Modifying login items or startup programs
+- Accessing contacts, messages, or other personal data
+- Running commands with sudo or admin privileges
+- Sending emails or messages on behalf of the user
+
+Frame it simply: "I can [action] for you. Should I go ahead?"
+Never proceed with these actions without explicit confirmation.
+`;
 }

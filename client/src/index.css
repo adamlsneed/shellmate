@@ -2,9 +2,46 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Light mode (default for new users) */
+:root {
+  --bg-primary: #f8f7f5;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --text-primary: #1a1a1a;
+  --text-secondary: #4a4a4a;
+  --text-muted: #7a7a7a;
+  --border: #e2dfd9;
+  --accent: #0891b2;
+  --accent-light: #ecfeff;
+  --user-bubble: #0891b2;
+  --user-bubble-text: #ffffff;
+  --assistant-bubble: #ffffff;
+  --assistant-bubble-text: #1a1a1a;
+  font-size: 18px;
+}
+
+/* Dark mode (existing users, toggle) */
+.dark {
+  --bg-primary: #131825;
+  --bg-secondary: #1a1f2e;
+  --bg-card: #1e2436;
+  --text-primary: #f0f0f0;
+  --text-secondary: #c0c0c0;
+  --text-muted: #808080;
+  --border: #2a3040;
+  --accent: #22d3ee;
+  --accent-light: #0e7490;
+  --user-bubble: #0e7490;
+  --user-bubble-text: #ffffff;
+  --assistant-bubble: #1e2436;
+  --assistant-bubble-text: #f0f0f0;
+}
+
 @layer base {
   body {
-    @apply bg-navy-950 text-gray-100 min-h-screen;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    min-height: 100vh;
   }
 }
 

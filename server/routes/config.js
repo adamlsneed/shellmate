@@ -7,7 +7,18 @@ import { CONFIG_PATH, readConfig, writeConfig, backupConfig } from '../utils/con
 const router = Router();
 
 router.get('/config', (_req, res) => {
-  res.json(readConfig());
+  const cfg = readConfig();
+  // Redact sensitive fields before sending to client
+  const safe = JSON.parse(JSON.stringify(cfg));
+  if (safe.tools?.web?.search?.apiKey) safe.tools.web.search.apiKey = '***';
+  if (safe.tools?.web?.search?.perplexity?.apiKey) safe.tools.web.search.perplexity.apiKey = '***';
+  if (safe.plugins?.entries?.['memory-lancedb']?.config?.embedding?.apiKey)
+    safe.plugins.entries['memory-lancedb'].config.embedding.apiKey = '***';
+  if (safe.skills?.entries?.homeassistant?.env?.HA_TOKEN)
+    safe.skills.entries.homeassistant.env.HA_TOKEN = '***';
+  if (safe.skills?.entries?.goplaces?.apiKey)
+    safe.skills.entries.goplaces.apiKey = '***';
+  res.json(safe);
 });
 
 // GET /api/install-context — detect whether this is a fresh install

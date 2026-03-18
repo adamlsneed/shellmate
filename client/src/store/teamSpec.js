@@ -91,6 +91,36 @@ export const useTeamSpecStore = create((set, get) => ({
     return { teamSpec: merged };
   }),
 
+    // Fills gaps with sensible defaults and returns the updated spec (avoids stale closure)
+    populateSimpleDefaults: () => {
+      const state = get();
+      const agent = state.teamSpec.agent;
+      const updated = {
+        ...state.teamSpec,
+        agent: {
+          ...agent,
+          personality: agent.personality || 'Warm, patient, and encouraging. Explains things simply.',
+          mission: agent.mission || 'Help with everyday Mac tasks — files, apps, settings, and questions.',
+          failure: agent.failure || 'Apologize simply and suggest trying a different approach.',
+          escalation: agent.escalation || 'If something seems risky, always ask before doing it.',
+          never: agent.never?.length ? agent.never : [
+            'Never delete files without asking first',
+            'Never change system settings without asking first',
+            'Never share personal information',
+          ],
+        },
+        capabilities: {
+          ...state.teamSpec.capabilities,
+          webSearch: false,
+          webFetch: true,
+          memory: 'core',
+          tools: { deny: ['exec'] },  // Restrict shell exec by default for non-technical users
+        },
+      };
+      set({ teamSpec: updated });
+      return updated;
+    },
+
   setGeneratedFiles: (files) => set({ generatedFiles: files }),
   setWriteResult: (result) => set({ writeResult: result }),
   setValidationOutput: (output) => set({ validationOutput: output }),

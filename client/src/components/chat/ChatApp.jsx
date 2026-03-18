@@ -1,26 +1,26 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useSSEChat } from '../../hooks/useSSEChat.js';
-import { useScrollToBottom, useAutofocus } from '../../hooks/useChatUI.js';
 import { MessageBubble } from '../common/MessageBubble.jsx';
-import { BouncingDots } from '../common/LoadingSpinner.jsx';
 import ToolCallDisplay from './ToolCallDisplay.jsx';
+import { QuickActions } from '../common/QuickActions.jsx';
+import { useThemeStore } from '../../theme.js';
 
-/**
- * Full-screen chat interface for post-wizard use.
- * Streams SSE events from /api/agent-chat/main with tool execution.
- */
 export default function ChatApp({ onSettings }) {
-  const { chatItems, loading, error, sendMessage } = useSSEChat();
+  const { chatItems, sendMessage, loading, error } = useSSEChat();
   const [input, setInput] = useState('');
-  const bottomRef = useScrollToBottom([chatItems, loading]);
-  const [inputRef, focusInput] = useAutofocus();
+  const bottomRef = useRef(null);
+  const inputRef = useRef(null);
+  const { mode, toggle: toggleTheme } = useThemeStore();
 
-  async function send() {
-    const text = input.trim();
-    if (!text || loading) return;
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatItems, loading]);
+
+  function send(text) {
+    const msg = text || input.trim();
+    if (!msg) return;
     setInput('');
-    await sendMessage(text);
-    focusInput();
+    sendMessage(msg);
   }
 
   function handleKeyDown(e) {
@@ -30,64 +30,68 @@ export default function ChatApp({ onSettings }) {
     }
   }
 
+  const isEmpty = chatItems.length === 0;
+
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen bg-[var(--bg-primary)]">
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-3 border-b border-gray-800 shrink-0">
+      <header className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)]">
         <div className="flex items-center gap-3">
-          <span className="text-lg font-bold text-shell-400">🐢 Shellmate</span>
+          <span className="text-3xl">🐢</span>
+          <span className="text-h3 text-[var(--accent)] font-bold">Shellmate</span>
         </div>
-        <button
-          onClick={onSettings}
-          className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
-        >
-          Settings
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleTheme}
+            className="px-3 py-2 rounded-friendly text-body text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card)] transition-colors"
+            title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {mode === 'dark' ? '☀️' : '🌙'}
+          </button>
+          {onSettings && (
+            <button
+              onClick={onSettings}
+              className="px-3 py-2 rounded-friendly text-body text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-card)] transition-colors"
+            >
+              ⚙️ Settings
+            </button>
+          )}
+        </div>
       </header>
 
       {/* Messages */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 scrollbar-thin">
-        <div className="max-w-2xl mx-auto">
-          {chatItems.length === 0 && !loading && (
-            <div className="text-center text-gray-600 text-sm mt-16">
-              Say hello to start chatting.
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+          {isEmpty && !loading && (
+            <div className="text-center pt-12 pb-6">
+              <div className="text-5xl mb-4">🐢</div>
+              <h2 className="text-h2 text-[var(--text-primary)] mb-2">How can I help?</h2>
+              <p className="text-body text-[var(--text-secondary)]">
+                Ask me anything about your Mac, or try one of these:
+              </p>
             </div>
           )}
 
+          {isEmpty && !loading && <QuickActions onSelect={send} />}
+
           {chatItems.map((item, i) => {
-            if (item.type === 'user') {
-              return <MessageBubble key={i} role="user" content={item.content} />;
-            }
-            if (item.type === 'assistant') {
-              return <MessageBubble key={i} role="assistant" content={item.content} />;
-            }
-            if (item.type === 'tool_call') {
-              return (
-                <ToolCallDisplay
-                  key={`tool-${item.id}`}
-                  name={item.name}
-                  input={item.input}
-                  result={item.result}
-                  isExecuting={item.isExecuting}
-                />
-              );
-            }
+            if (item.type === 'tool_call') return <ToolCallDisplay key={i} {...item} friendly={true} />;
+            if (item.type === 'user') return <MessageBubble key={i} role="user" content={item.content} showAvatar={true} />;
+            if (item.type === 'assistant') return <MessageBubble key={i} role="assistant" content={item.content} showAvatar={true} />;
             return null;
           })}
 
-          {loading && chatItems[chatItems.length - 1]?.type !== 'assistant' && (
-            <div className="flex justify-start mb-4">
-              <div className="w-8 h-8 rounded-full bg-shell-700 flex items-center justify-center text-sm mr-3 shrink-0">
-                🐢
-              </div>
-              <div className="bg-gray-800 rounded-2xl rounded-bl-sm px-4 py-3">
-                <BouncingDots />
-              </div>
+          {loading && (
+            <div className="flex items-center gap-3 px-4">
+              <span className="inline-block w-5 h-5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+              <span className="text-body text-[var(--text-muted)]">Thinking...</span>
             </div>
           )}
 
           {error && (
-            <div className="text-xs text-red-400 text-center my-2">{error}</div>
+            <div className="px-4 py-3 rounded-friendly bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-body">
+              {error}
+            </div>
           )}
 
           <div ref={bottomRef} />
@@ -95,28 +99,24 @@ export default function ChatApp({ onSettings }) {
       </div>
 
       {/* Input */}
-      <div className="border-t border-gray-800 px-6 py-4 shrink-0">
-        <div className="max-w-2xl mx-auto flex gap-3 items-end">
+      <div className="border-t border-[var(--border)] bg-[var(--bg-secondary)] px-4 py-4">
+        <div className="max-w-2xl mx-auto flex gap-3">
           <textarea
             ref={inputRef}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Message your helper..."
+            placeholder="Type your message..."
             rows={2}
-            disabled={loading}
-            className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-shell-500 resize-none disabled:opacity-50 leading-relaxed"
+            className="flex-1 min-h-input px-5 py-3 rounded-friendly text-body bg-[var(--bg-card)] text-[var(--text-primary)] border-2 border-[var(--border)] focus:border-[var(--accent)] focus:outline-none focus:ring-4 focus:ring-shell-300 resize-none"
           />
           <button
-            onClick={send}
-            disabled={loading || !input.trim()}
-            className="px-5 py-3 bg-shell-600 hover:bg-shell-500 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-40 shrink-0"
+            onClick={() => send()}
+            disabled={!input.trim() || loading}
+            className="min-h-input px-6 rounded-friendly bg-[var(--accent)] text-white text-body font-semibold hover:opacity-90 disabled:opacity-40 transition-all"
           >
             Send
           </button>
-        </div>
-        <div className="max-w-2xl mx-auto mt-1 px-1">
-          <span className="text-xs text-gray-700">Enter to send, Shift+Enter for new line</span>
         </div>
       </div>
     </div>
