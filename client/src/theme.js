@@ -49,7 +49,14 @@ export function describeTool(name, input) {
     }
     case 'mac_apps':      return describeAction(input, 'Managing apps');
     case 'mac_files':     return describeAction(input, 'Organizing your files');
-    default:              return 'Working on it...';
+    default: {
+      // CLI-discovered tools: cli_ffmpeg, cli_git, etc.
+      if (name.startsWith('cli_')) {
+        const cmd = name.replace('cli_', '').replace(/_/g, '-');
+        return `Running ${cmd}...`;
+      }
+      return 'Working on it...';
+    }
   }
 }
 
