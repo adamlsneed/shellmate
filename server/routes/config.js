@@ -67,8 +67,14 @@ router.get('/oauth/status', async (_req, res) => {
       return res.json({ available: false, needsLogin: true, needsInstall: false });
     }
 
-    // Neither token nor CLI
-    return res.json({ available: false, needsLogin: true, needsInstall: true });
+    // No token, no CLI — check if npx is available (comes with Node.js)
+    const npxPath = await whichCommand('npx');
+    if (npxPath) {
+      return res.json({ available: false, needsLogin: true, needsInstall: true, hasNpx: true });
+    }
+
+    // No npx either — user needs to install Node.js first
+    return res.json({ available: false, needsLogin: true, needsInstall: true, hasNpx: false, needsNode: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

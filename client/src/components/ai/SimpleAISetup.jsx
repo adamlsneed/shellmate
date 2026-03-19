@@ -11,8 +11,9 @@ export default function SimpleAISetup({ onDone }) {
   const [error, setError] = useState('');
   const [testing, setTesting] = useState(false);
   const [signinTab, setSigninTab] = useState('subscription');
-  const [oauthStatus, setOauthStatus] = useState(null); // null | 'checking' | 'connecting' | 'waiting' | 'error'
+  const [oauthStatus, setOauthStatus] = useState(null); // null | 'checking' | 'connecting' | 'waiting' | 'error' | 'needs-node'
   const [oauthMessage, setOauthMessage] = useState('');
+  const [oauthDetails, setOauthDetails] = useState(null);
 
   // Check if the person setting this up already put the key on the computer
   useEffect(() => {
@@ -47,8 +48,13 @@ export default function SimpleAISetup({ onDone }) {
         // Token already exists — grab it and connect
         setOauthMessage('Found your Claude account! Connecting...');
         await connectWithOAuth();
+      } else if (data.needsNode) {
+        // No Node.js installed — need to guide user to install it first
+        setOauthStatus('needs-node');
+        setOauthDetails(data);
       } else {
         setOauthStatus(null); // Ready to show the sign-in button
+        setOauthDetails(data);
       }
     } catch {
       setOauthStatus(null);
@@ -258,6 +264,42 @@ export default function SimpleAISetup({ onDone }) {
                 <p className="text-sm text-[var(--text-muted)]">
                   A browser window should have opened. Sign in with your Claude account there, then come back here.
                 </p>
+              </div>
+            )}
+
+            {/* Needs Node.js installed first */}
+            {oauthStatus === 'needs-node' && (
+              <div className="space-y-4 text-left">
+                <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-300 dark:border-amber-700 rounded-friendly p-4">
+                  <p className="text-sm font-semibold text-[var(--text-primary)] mb-2">
+                    One-time setup needed
+                  </p>
+                  <p className="text-sm text-[var(--text-secondary)] mb-3">
+                    Shellmate needs a small helper tool to sign you in. This only takes a minute:
+                  </p>
+                  <Step number={1}>
+                    <span>Download and install Node.js: </span>
+                    <a
+                      href="https://nodejs.org"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[var(--accent)] underline font-medium"
+                    >
+                      nodejs.org
+                    </a>
+                    <span className="block text-xs text-[var(--text-muted)] mt-1">
+                      Click the big green button, open the downloaded file, and follow the installer.
+                    </span>
+                  </Step>
+                  <div className="mt-3">
+                    <Step number={2}>
+                      <span>After installing, come back here and click the button below.</span>
+                    </Step>
+                  </div>
+                </div>
+                <BigButton onClick={() => { setOauthStatus(null); checkOAuthStatus(); }} className="w-full">
+                  I've installed it — continue
+                </BigButton>
               </div>
             )}
 
