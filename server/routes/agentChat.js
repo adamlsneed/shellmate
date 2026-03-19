@@ -5,7 +5,7 @@ import { readConfig } from '../utils/config.js';
 import { normalizeProvider, resolveApiKey } from '../utils/ai-clients.js';
 import { resolveAgentWorkspace } from '../utils/workspace.js';
 import { initSse, sendSse } from '../utils/sse.js';
-import { getToolsForAgent } from '../tools/definitions.js';
+import { getToolsForAgent } from '../tools/registry.js';
 import { runAnthropicLoop, runOpenAILoop } from '../tools/loop.js';
 
 const router = Router();

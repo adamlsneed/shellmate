@@ -4,8 +4,8 @@
  */
 
 import { normalizeModel } from '../utils/ai-clients.js';
-import { executeTool } from './executor.js';
-import { toAnthropicTools, toOpenAITools } from './definitions.js';
+import { executeTool } from './registry.js';
+import { toAnthropicTools, toOpenAITools } from './registry.js';
 
 const MAX_ROUNDS = 15;
 const ANTHROPIC_VERSION = '2023-06-01';
