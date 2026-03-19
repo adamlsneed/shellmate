@@ -1,3 +1,5 @@
+import { readConfig } from './config.js';
+
 const ANTHROPIC_VERSION = '2023-06-01';
 const DEFAULT_MAX_TOKENS = 1024;
 
@@ -26,8 +28,20 @@ export function normalizeProvider(provider) {
 
 export function resolveApiKey(provider, clientKey) {
   if (clientKey) return clientKey;
-  if (provider === 'anthropic') return process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_CODE_OAUTH_TOKEN || null;
-  if (provider === 'openai') return process.env.OPENAI_API_KEY || null;
+  // Check environment variables
+  if (provider === 'anthropic') {
+    const envKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_CODE_OAUTH_TOKEN || null;
+    if (envKey) return envKey;
+  }
+  if (provider === 'openai') {
+    const envKey = process.env.OPENAI_API_KEY || null;
+    if (envKey) return envKey;
+  }
+  // Fall back to shellmate.json saved config
+  try {
+    const cfg = readConfig();
+    if (cfg.ai?.apiKey) return cfg.ai.apiKey;
+  } catch {}
   return null;
 }
 

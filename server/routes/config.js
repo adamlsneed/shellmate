@@ -46,6 +46,39 @@ router.get('/setup-status', (_req, res) => {
   });
 });
 
+// GET /api/ai-config — return saved AI configuration (provider, key, model)
+router.get('/ai-config', (_req, res) => {
+  const cfg = readConfig();
+  const ai = cfg.ai || {};
+  res.json({
+    provider: ai.provider || 'default',
+    apiKey: ai.apiKey || '',
+    model: ai.model || '',
+    configured: !!ai.configured,
+    envKey: !!ai.envKey,
+  });
+});
+
+// POST /api/ai-config — persist AI configuration to shellmate.json
+router.post('/ai-config', (req, res) => {
+  try {
+    const { provider, apiKey, model, envKey } = req.body;
+    const cfg = readConfig();
+    backupConfig();
+    cfg.ai = {
+      provider: provider || 'default',
+      apiKey: apiKey || '',
+      model: model || '',
+      configured: true,
+      envKey: !!envKey,
+    };
+    writeConfig(cfg);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Shellmate always uses the main agent (agents.defaults.workspace).
 // This simplified PATCH just handles bindings.
 router.patch('/config', (req, res) => {

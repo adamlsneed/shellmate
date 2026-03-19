@@ -4,12 +4,15 @@ import WizardShell from './components/wizard/WizardShell.jsx';
 import SimpleSetup from './components/wizard/SimpleSetup.jsx';
 import ChatApp from './components/chat/ChatApp.jsx';
 import SettingsPanel from './components/settings/SettingsPanel.jsx';
+import { useAIConfig } from './store/aiConfig.js';
 
 export default function App() {
   const [state, setState] = useState('loading'); // loading | preflight | wizard | chat
   const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
+    // Load AI config from server (survives port changes between Electron sessions)
+    useAIConfig.getState().loadFromServer();
     checkSetup();
   }, []);
 
