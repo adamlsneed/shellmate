@@ -5,8 +5,8 @@
 <h1 align="center">Shellmate</h1>
 
 <p align="center">
-  Set up a personal AI helper for your Mac.<br>
-  No terminal, no config files — just a short conversation and your helper is ready.
+  A personal AI helper for your Mac.<br>
+  Just a short conversation and your helper is ready — no technical knowledge needed.
 </p>
 
 <p align="center">
@@ -15,51 +15,39 @@
 
 ---
 
-> **Note:** The app is not yet code-signed.
->
-> After dragging the app to Applications, open Terminal and run:
-> ```bash
-> xattr -cr "/Applications/Shellmate.app"
-> ```
-> Then open it normally. Without this, macOS will say the app is "damaged" because it has no code signature.
-
 ## How it works
 
 | Step | What happens |
 |:----:|:-------------|
-| 🐢 | **Connect an AI** — Use your Anthropic or OpenAI API key (or OAuth token). Step-by-step instructions walk you through getting one. |
-| 💬 | **Have a conversation** — The AI asks plain-English questions about what your helper should do, which Mac apps you use, and what you'd like to automate. |
-| 📋 | **Review** — See exactly what was captured before anything is written. |
-| ⚙️ | **Generate** — Creates workspace files that define your helper's personality, rules, and capabilities. |
-| 🔒 | **Set permissions** — Choose what your helper can do on its own vs. what it should always ask first. |
-| ✅ | **Start chatting** — Your helper is validated and ready with full tool capabilities. |
+| 🐢 | **Sign in** — Connect with your Claude account or paste an access code. |
+| 💬 | **Have a quick chat** — Shellmate asks a few friendly questions about you, your Mac, and what you'd like help with. |
+| ✅ | **Start chatting** — Your helper is personalized and ready to go. |
+
+Optionally, you can set up extra features like web search, terminal access, and smart home control.
 
 After the one-time setup, Shellmate opens straight to chat on every launch.
 
 ## What your helper can do
 
-- **Run terminal commands** — automate tasks, manage files, run scripts
-- **Read and write files** — organize, create, and edit documents
-- **Search the web** — look things up via Brave Search
-- **Fetch web pages** — read and summarize web content
+- **Answer questions** — ask about anything and get clear, simple answers
+- **Search the web** — look things up for you (requires free Brave Search key)
+- **Read and write files** — organize, create, and edit documents on your Mac
+- **Run Mac commands** — automate tasks, open apps, fix problems (optional, off by default)
+- **Control smart home** — manage HomeKit / Home Assistant devices (optional)
 
-All tools respect the permissions you set during setup.
+All actions respect the permissions you choose. Shellmate always asks before doing anything risky.
 
-## What gets generated
+## Built for everyone
 
-In `~/.shellmate/workspace/`:
+Shellmate is designed to be usable by anyone — including people who have never used a terminal or configured software before. The setup wizard uses plain language, large text, and sensible defaults. A technically-savvy family member can pre-configure the access code so the user just opens the app and starts talking.
 
-| File | Purpose |
-|------|---------|
-| `SOUL.md` | Identity, mission, and hard rules |
-| `AGENTS.md` | Session startup checklist and operating rules |
-| `IDENTITY.md` | Name, role, personality |
-| `USER.md` | Profile of the human and their Mac setup |
-| `TOOLS.md` | Mac environment notes |
-| `BOOTSTRAP.md` | First-run startup ritual |
-| `MEMORY.md` | Long-term memory template |
-| `memory/README.md` | Memory directory conventions |
-| `skills/README.md` | Recommended skills with install commands |
+## Security
+
+- **Code signed and notarized** by Apple — no Gatekeeper warnings
+- **Auth tokens** protect the local API from cross-site attacks
+- **Path restrictions** prevent access to sensitive files (~/.ssh, /etc, etc.)
+- **Secret redaction** — API keys are never exposed in responses
+- **Confirmation required** before any destructive action (deleting files, changing settings)
 
 ## Development
 
@@ -71,3 +59,7 @@ npm start                # serves production build
 npm run electron:dev     # launches the desktop app in dev mode
 npm run electron:build   # builds DMG into release/
 ```
+
+## License
+
+MIT
