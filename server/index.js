@@ -14,12 +14,14 @@ import capabilitiesRoute from './routes/capabilities.js';
 import agentChatRoute from './routes/agentChat.js';
 import toolsRoute from './routes/tools.js';
 import { registerBuiltins } from './tools/builtins.js';
+import { registerMacTools } from './tools/mac/index.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export async function createServer() {
   // Initialize tool registry with built-in tools
   registerBuiltins();
+  registerMacTools();
 
   const app = express();
   app.use(express.json({ limit: '10mb' }));
