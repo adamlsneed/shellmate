@@ -13,6 +13,7 @@ Shellmate's agent has 6 generic tools (shell_exec, file_read, file_write, file_l
 2. Auto-discover installed CLI tools so the agent knows what's available on this Mac
 3. Support user-defined plugin tools that can be added at any time
 4. Implement trust-after-first-use permissions so the agent can act safely without being annoying
+5. Replace Brave Search with Google search as the default — no API key required
 
 ## Non-Goals
 
@@ -36,6 +37,9 @@ The deny map explicitly includes all `cli_*` tools under the `exec` key. This is
 
 **D5. macOS TCC (privacy permission) dialogs are detected and handled.**
 The `osascript.js` helper detects TCC-related errors (error code -1743, "not allowed assistive access", "not authorized") and returns a structured error: `{ tccDenied: true, app: 'Calendar', message: '...' }`. The tool loop recognizes this and sends a special SSE `tcc_error` event. The client shows a friendly guide: "Shellmate needs permission to access Calendar. Open System Settings > Privacy & Security > Calendars and allow Shellmate." The Electron app's `Info.plist` includes usage description strings for all accessed apps.
+
+**D7. Google search replaces Brave as the default search provider.**
+The current `web_search` tool requires a Brave API key — a significant friction point for non-technical users. The new default uses Google search via HTML scraping (fetch `https://www.google.com/search?q=...`, parse results from HTML). No API key needed. Brave and Perplexity remain as optional providers for users who prefer them. The `web_search` tool executor becomes provider-aware: Google (default, no key), Brave (requires key), Perplexity (requires key).
 
 **D6. Tool count is managed by contextual filtering.**
 To avoid inflating every API call with 30+ tools, the registry supports `getToolsForAgent(agentConfig, { contextHint })`. When `contextHint` is provided (extracted from the user's message by a lightweight classifier), only relevant tool categories are included. All built-in + Mac tools are always included (16 tools). CLI tools are only included when the context suggests command-line work. Plugin tools are always included. Maximum tool count cap: 30.
@@ -301,7 +305,54 @@ GET  /api/tools/list        — List all registered tools (for settings UI)
 GET  /api/tools/plugins     — List loaded plugins
 ```
 
-### 8. TOOLS.md Generator Update
+### 8. Google Search as Default Provider
+
+Replace the Brave-only `web_search` executor with a multi-provider system. Google is the default and requires no API key.
+
+**New file: `server/tools/search-providers.js`**
+
+```js
+// Provider interface: search(query, count) → [{ title, url, snippet }]
+export async function googleSearch(query, count = 5)   // scrapes google.com, no key needed
+export async function braveSearch(query, count, apiKey) // existing Brave API logic
+export async function perplexitySearch(query, count, apiKey) // Perplexity API
+```
+
+**Google search implementation:**
+- Fetches `https://www.google.com/search?q=${encodeURIComponent(query)}&num=${count}` with a browser-like User-Agent
+- Parses result blocks from HTML (title from `<h3>`, URL from `<a href>`, snippet from nearby text)
+- Returns structured results identical to Brave format
+- Handles rate limiting gracefully: if Google returns a CAPTCHA page, falls back to a "Search is temporarily limited" message
+- No API key, no signup, works immediately on first launch
+
+**Provider selection logic in executor:**
+```js
+export async function webSearch({ query, count = 5 }, context) {
+  const provider = context.searchProvider || 'google';
+  switch (provider) {
+    case 'google':     return googleSearch(query, count);
+    case 'brave':      return braveSearch(query, count, context.braveApiKey);
+    case 'perplexity': return perplexitySearch(query, count, context.perplexityApiKey);
+    default:           return googleSearch(query, count);
+  }
+}
+```
+
+**Config changes:**
+- `shellmate.json` `tools.web.search.provider` defaults to `'google'` (previously defaulted to `'brave'`)
+- Brave/Perplexity still work if configured with API keys
+- Capabilities UI (`CapabilitiesStep`) shows Google as default, Brave/Perplexity as optional upgrades
+- Validation route (`/api/validate`) no longer fails when no Brave key is set — Google needs no key
+
+**Modified files for search:**
+- `server/tools/executor.js` → `webSearch()` delegates to provider
+- `server/tools/search-providers.js` (new) → Google/Brave/Perplexity implementations
+- `server/routes/agentChat.js` → pass `searchProvider` in context
+- `server/routes/validate.js` → remove Brave key requirement
+- `server/routes/capabilities.js` → default provider is `'google'`, update GET/POST
+- `client/src/components/wizard/CapabilitiesStep.jsx` → show Google as default option
+
+### 9. TOOLS.md Generator Update
 
 `server/generators/tools.js` updates to include discovered tools and Mac capabilities:
 
@@ -347,13 +398,14 @@ You have direct access to: Calendar, Reminders, Contacts, Notes, Messages, Mail,
 | `server/tools/mac/files.js` | File organization tool |
 | `server/tools/mac/index.js` | Registers all Mac tools with registry |
 | `server/routes/tools.js` | API routes for grants, rescan, listing |
+| `server/tools/search-providers.js` | Google (default), Brave, Perplexity search implementations |
 | `client/src/components/chat/PermissionCard.jsx` | Inline confirmation UI component |
 
 ### Modified Files
 | File | Change |
 |------|--------|
 | `server/tools/definitions.js` | Delegates to registry; keeps `toAnthropicTools`/`toOpenAITools` |
-| `server/tools/executor.js` | Delegates to registry instead of switch statement |
+| `server/tools/executor.js` | Delegates to registry; `webSearch` delegates to search-providers |
 | `server/tools/loop.js` | Add permission check + confirm/resume SSE flow |
 | `server/routes/agentChat.js` | Pass session ID for permission tracking |
 | `server/index.js` | Mount new `/api/tools` routes; initialize registry on startup |
@@ -362,19 +414,23 @@ You have direct access to: Calendar, Reminders, Contacts, Notes, Messages, Mail,
 | `client/src/components/chat/ToolCallDisplay.jsx` | Add Mac tool icons and friendly descriptions |
 | `client/src/components/common/FriendlyToolStatus.jsx` | Add Mac tool descriptions to `describeTool()` |
 | `server/generators/tools.js` | Include discovered tools + Mac capabilities in TOOLS.md |
+| `server/routes/validate.js` | Remove Brave key requirement; Google needs no key |
+| `server/routes/capabilities.js` | Default search provider → Google; Brave/Perplexity optional |
+| `client/src/components/wizard/CapabilitiesStep.jsx` | Google as default search option |
 
 ---
 
 ## Implementation Order
 
 1. **Registry** — `registry.js` + refactor `builtins.js` + move converters to registry (existing tools work through registry, `definitions.js` becomes thin re-export)
-2. **Permissions** — `permissions.js` (Promise/resolver pattern) + `loop.js` changes + `PermissionCard.jsx` + `POST /api/tools/grant` route + `useSSEChat.js` confirm handler. Must be complete before Mac tools so we can test confirmation flow.
-3. **Mac foundation** — `osascript.js` helper (with TCC error detection) + `mac/index.js` loader + Electron `Info.plist` usage description strings
-4. **Mac tools** — Implement all 10 tool modules (start with calendar + reminders for quick validation, then batch the rest)
-5. **CLI discovery** — `discovery.js` + dynamic deny-map registration + cache + rescan endpoint + `tools_rescan` built-in tool
-6. **Plugin system** — Plugin loader + file watcher + opt-in gate (`plugins.enabled` in shellmate.json)
-7. **UI polish** — Mac tool icons + friendly descriptions in `describeTool()` + TOOLS.md generator update
-8. **Integration** — Wire everything through agentChat.js, contextual tool filtering, end-to-end testing
+2. **Google Search** — `search-providers.js` (Google default + Brave + Perplexity) + update `executor.js` + update `validate.js` + update `capabilities.js` + update `CapabilitiesStep.jsx`. Quick win — removes API key friction immediately.
+3. **Permissions** — `permissions.js` (Promise/resolver pattern) + `loop.js` changes + `PermissionCard.jsx` + `POST /api/tools/grant` route + `useSSEChat.js` confirm handler. Must be complete before Mac tools so we can test confirmation flow.
+4. **Mac foundation** — `osascript.js` helper (with TCC error detection) + `mac/index.js` loader + Electron `Info.plist` usage description strings
+5. **Mac tools** — Implement all 10 tool modules (start with calendar + reminders for quick validation, then batch the rest)
+6. **CLI discovery** — `discovery.js` + dynamic deny-map registration + cache + rescan endpoint + `tools_rescan` built-in tool
+7. **Plugin system** — Plugin loader + file watcher + opt-in gate (`plugins.enabled` in shellmate.json)
+8. **UI polish** — Mac tool icons + friendly descriptions in `describeTool()` + TOOLS.md generator update
+9. **Integration** — Wire everything through agentChat.js, contextual tool filtering, end-to-end testing
 
 ## Future Additions (Out of Scope for Now)
 
