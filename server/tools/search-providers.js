@@ -1,99 +1,75 @@
 // server/tools/search-providers.js
 /**
  * Web search provider implementations.
- * Google is the default — no API key needed.
+ * DuckDuckGo is the default — no API key needed, reliable HTML endpoint.
  * Brave and Perplexity are optional (require API keys).
  */
 
 const MAX_RESULTS = 20;
 
 /**
- * Google search via HTML scraping. No API key required.
+ * DuckDuckGo search via HTML scraping. No API key required.
+ * Uses the HTML-only endpoint designed for non-JS clients.
  */
-export async function googleSearch(query, count = 5) {
+export async function duckduckgoSearch(query, count = 5) {
   try {
     count = Math.min(count, MAX_RESULTS);
-    const params = new URLSearchParams({ q: query, num: count, hl: 'en' });
-    const res = await fetch(`https://www.google.com/search?${params}`, {
+    const params = new URLSearchParams({ q: query });
+    const res = await fetch(`https://html.duckduckgo.com/html/?${params}`, {
+      method: 'POST',
       headers: {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml',
-        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept': 'text/html',
       },
+      body: params,
     });
 
     if (!res.ok) {
-      return `Google search error: ${res.status} ${res.statusText}`;
+      return `Web search error: ${res.status} ${res.statusText}`;
     }
 
     const html = await res.text();
-
-    // Check for CAPTCHA / unusual traffic page
-    if (html.includes('detected unusual traffic') || html.includes('/sorry/')) {
-      return 'Google search is temporarily limited. Try again in a moment, or configure Brave Search as an alternative provider.';
-    }
-
-    // Check for JS-only page (no HTML results rendered server-side)
-    if (html.includes('enablejs') || html.includes('/httpservice/retry/')) {
-      return 'Google search is temporarily limited. Try again in a moment, or configure Brave Search as an alternative provider.';
-    }
-
-    return parseGoogleResults(html, count);
+    return parseDuckDuckGoResults(html, count);
   } catch (err) {
-    return `Google search error: ${err.message}`;
+    return `Web search error: ${err.message}`;
   }
 }
 
 /**
- * Parse Google search results from HTML.
- * Extracts title, URL, and snippet from result blocks.
+ * Parse DuckDuckGo HTML results.
  */
-function parseGoogleResults(html, maxResults) {
+function parseDuckDuckGoResults(html, maxResults) {
   const results = [];
 
-  // Match result blocks: <a href="/url?q=REAL_URL..."><h3>TITLE</h3></a> ... snippet
-  // Google wraps results in <div class="g"> blocks
-  const blockRegex = /<div class="[^"]*\bg\b[^"]*">[\s\S]*?<\/div>\s*<\/div>/g;
-  const blocks = html.match(blockRegex) || [];
+  // DuckDuckGo HTML results are in <a class="result__a" href="URL">TITLE</a>
+  // with snippets in <a class="result__snippet" ...>SNIPPET</a>
+  const resultRegex = /<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>([\s\S]*?)<\/a>/g;
+  const snippetRegex = /<a[^>]*class="result__snippet"[^>]*>([\s\S]*?)<\/a>/g;
 
-  for (const block of blocks) {
-    if (results.length >= maxResults) break;
+  const urls = [];
+  const titles = [];
+  let match;
 
-    // Extract URL from /url?q= redirect links
-    const urlMatch = block.match(/href="\/url\?q=([^&"]+)/);
-    if (!urlMatch) continue;
-    const url = decodeURIComponent(urlMatch[1]);
-
-    // Skip Google's own URLs
-    if (url.includes('google.com/') && !url.includes('support.google.com')) continue;
-
-    // Extract title from <h3>
-    const titleMatch = block.match(/<h3[^>]*>([\s\S]*?)<\/h3>/);
-    const title = titleMatch
-      ? titleMatch[1].replace(/<[^>]+>/g, '').trim()
-      : url;
-
-    // Extract snippet — text after the link block
-    const snippetMatch = block.match(/<div[^>]*class="[^"]*VwiC3b[^"]*"[^>]*>([\s\S]*?)<\/div>/);
-    const snippet = snippetMatch
-      ? snippetMatch[1].replace(/<[^>]+>/g, '').replace(/&[a-z]+;/g, ' ').trim()
-      : '';
-
-    if (title || snippet) {
-      results.push({ title, url, snippet });
-    }
+  while ((match = resultRegex.exec(html)) !== null) {
+    let url = match[1];
+    // DDG wraps URLs in a redirect — extract the real URL
+    const uddgMatch = url.match(/uddg=([^&]+)/);
+    if (uddgMatch) url = decodeURIComponent(uddgMatch[1]);
+    urls.push(url);
+    titles.push(match[2].replace(/<[^>]+>/g, '').trim());
   }
 
-  // Fallback: try simpler regex if the block approach found nothing
-  if (results.length === 0) {
-    const simpleRegex = /href="\/url\?q=(https?:\/\/[^&"]+)[^"]*"[^>]*>[\s\S]*?<h3[^>]*>([\s\S]*?)<\/h3>/g;
-    let match;
-    while ((match = simpleRegex.exec(html)) !== null && results.length < maxResults) {
-      const url = decodeURIComponent(match[1]);
-      const title = match[2].replace(/<[^>]+>/g, '').trim();
-      if (url.includes('google.com/')) continue;
-      results.push({ title, url, snippet: '' });
-    }
+  const snippets = [];
+  while ((match = snippetRegex.exec(html)) !== null) {
+    snippets.push(match[1].replace(/<[^>]+>/g, '').replace(/&[a-z]+;/g, ' ').trim());
+  }
+
+  for (let i = 0; i < Math.min(urls.length, maxResults); i++) {
+    results.push({
+      title: titles[i] || urls[i],
+      url: urls[i],
+      snippet: snippets[i] || '',
+    });
   }
 
   if (results.length === 0) {
@@ -157,11 +133,12 @@ export async function perplexitySearch(query, count = 5, apiKey) {
  * Route search to the configured provider.
  */
 export async function routeSearch({ query, count = 5 }, context = {}) {
-  const provider = context.searchProvider || 'google';
+  const provider = context.searchProvider || 'duckduckgo';
   switch (provider) {
     case 'brave':      return braveSearch(query, count, context.braveApiKey);
     case 'perplexity': return perplexitySearch(query, count, context.perplexityApiKey);
-    case 'google':
-    default:           return googleSearch(query, count);
+    case 'duckduckgo':
+    case 'google':     // backwards compat — routes to DuckDuckGo
+    default:           return duckduckgoSearch(query, count);
   }
 }
