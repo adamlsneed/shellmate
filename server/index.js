@@ -12,6 +12,7 @@ import chatRoute from './routes/chat.js';
 import preflightRoute from './routes/preflight.js';
 import capabilitiesRoute from './routes/capabilities.js';
 import agentChatRoute from './routes/agentChat.js';
+import toolsRoute from './routes/tools.js';
 import { registerBuiltins } from './tools/builtins.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -57,6 +58,7 @@ export async function createServer() {
   app.use('/api', preflightRoute);
   app.use('/api', capabilitiesRoute);
   app.use('/api', agentChatRoute);
+  app.use('/api', toolsRoute);
 
   if (process.env.NODE_ENV === 'development') {
     // Vite dev server proxy
