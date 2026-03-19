@@ -1,6 +1,6 @@
 {
   "name": "shellmate",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "Set up a personal AI helper for your Mac",
   "type": "module",
   "main": "electron/main.js",
