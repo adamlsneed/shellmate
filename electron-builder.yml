@@ -13,7 +13,9 @@ publish:
   provider: github
   releaseType: release
 mac:
-  target: dmg
+  target:
+    - dmg
+    - zip
   category: public.app-category.productivity
   icon: electron/icons/icon.icns
   identity: "Adam Sneed (66K48S8RD4)"

@@ -38,12 +38,30 @@ function setupAutoUpdater() {
       defaultId: 0,
     }).then(({ response }) => {
       if (response === 0) {
-        autoUpdater.downloadUpdate();
+        // Show progress notification while downloading
+        if (mainWindow) {
+          mainWindow.setProgressBar(0.01); // indeterminate start
+        }
+        autoUpdater.downloadUpdate().catch((err) => {
+          if (mainWindow) mainWindow.setProgressBar(-1);
+          dialog.showMessageBox(mainWindow, {
+            type: 'error',
+            title: 'Download Failed',
+            message: `Could not download the update: ${err?.message || 'Unknown error'}. Please try again later.`,
+          });
+        });
       }
     });
   });
 
+  autoUpdater.on('download-progress', (progress) => {
+    if (mainWindow) {
+      mainWindow.setProgressBar(progress.percent / 100);
+    }
+  });
+
   autoUpdater.on('update-downloaded', () => {
+    if (mainWindow) mainWindow.setProgressBar(-1); // clear progress bar
     dialog.showMessageBox(mainWindow, {
       type: 'info',
       title: 'Update Ready',
@@ -59,6 +77,7 @@ function setupAutoUpdater() {
 
   autoUpdater.on('error', (err) => {
     console.log('Auto-updater error:', err?.message);
+    if (mainWindow) mainWindow.setProgressBar(-1);
   });
 
   // Check for updates 3 seconds after launch
