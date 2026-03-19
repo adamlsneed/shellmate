@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { exec } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { expandHome } from '../utils/paths.js';
@@ -47,113 +46,72 @@ router.get('/setup-status', (_req, res) => {
   });
 });
 
-// ── OAuth automation ─────────────────────────────────────────────────────────
+// ── OAuth (PKCE flow — no CLI or Node.js dependency) ────────────────────────
+
+import {
+  startOAuthFlow,
+  exchangeCodeForTokens,
+  getValidAccessToken,
+  loadOAuthCredentials,
+} from '../utils/anthropic-oauth.js';
 
 /**
- * GET /api/oauth/status — Check if Claude Code OAuth credentials exist in macOS Keychain.
- * Returns { available, needsLogin, needsInstall }
+ * GET /api/oauth/status — Check if saved OAuth credentials exist.
  */
 router.get('/oauth/status', async (_req, res) => {
   try {
-    // Try to read Claude Code credentials from macOS Keychain
-    const token = await getKeychainOAuthToken();
-    if (token) {
-      return res.json({ available: true, needsLogin: false, needsInstall: false });
-    }
-
-    // No token — check if claude CLI is installed
-    const claudePath = await whichCommand('claude');
-    if (claudePath) {
-      return res.json({ available: false, needsLogin: true, needsInstall: false });
-    }
-
-    // No token, no CLI — check if npx is available (comes with Node.js)
-    const npxPath = await whichCommand('npx');
-    if (npxPath) {
-      return res.json({ available: false, needsLogin: true, needsInstall: true, hasNpx: true });
-    }
-
-    // No npx either — user needs to install Node.js first
-    return res.json({ available: false, needsLogin: true, needsInstall: true, hasNpx: false, needsNode: true });
+    const token = await getValidAccessToken();
+    res.json({ available: !!token });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 /**
- * POST /api/oauth/connect — Get OAuth token from Keychain, or initiate login flow.
- * If credentials exist in Keychain, returns the token immediately.
- * If not, starts `claude auth login` (opens browser) and polls for completion.
+ * POST /api/oauth/start — Begin the OAuth PKCE flow.
+ * Returns an authorization URL that should be opened in the user's browser.
  */
-router.post('/oauth/connect', async (_req, res) => {
+router.post('/oauth/start', async (_req, res) => {
   try {
-    // First, try to get existing token from Keychain
-    let token = await getKeychainOAuthToken();
-    if (token) {
-      return res.json({ ok: true, token });
-    }
-
-    // No existing token — we need to run claude auth login
-    const claudePath = await whichCommand('claude') || await whichCommand('npx');
-    if (!claudePath) {
-      return res.status(400).json({ error: 'Claude Code CLI not found. Please install it first: npm install -g @anthropic-ai/claude-code' });
-    }
-
-    // Start the login flow (opens browser)
-    const loginCmd = claudePath.endsWith('npx')
-      ? 'npx --yes @anthropic-ai/claude-code auth login --claudeai'
-      : 'claude auth login --claudeai';
-
-    exec(loginCmd, { timeout: 120000 }, () => {});
-
-    // Poll Keychain for token (user is signing in via browser)
-    const maxWait = 120000; // 2 minutes
-    const pollInterval = 2000;
-    const startTime = Date.now();
-
-    while (Date.now() - startTime < maxWait) {
-      await new Promise(r => setTimeout(r, pollInterval));
-      token = await getKeychainOAuthToken();
-      if (token) {
-        return res.json({ ok: true, token });
-      }
-    }
-
-    return res.status(408).json({ error: 'Sign-in timed out. Please try again.' });
+    const { authUrl } = await startOAuthFlow();
+    res.json({ authUrl });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 /**
- * Read OAuth access token from macOS Keychain (Claude Code credential store).
- * Returns the token string or null if not found.
+ * POST /api/oauth/exchange — Exchange the authorization code for tokens.
+ * Body: { code: "authcode#state" }
  */
-function getKeychainOAuthToken() {
-  return new Promise((resolve) => {
-    exec('security find-generic-password -s "Claude Code-credentials" -w', { timeout: 5000 }, (err, stdout) => {
-      if (err || !stdout.trim()) return resolve(null);
-      try {
-        const creds = JSON.parse(stdout.trim());
-        const token = creds?.claudeAiOauth?.accessToken;
-        resolve(token && token.startsWith('sk-ant-') ? token : null);
-      } catch {
-        resolve(null);
-      }
+router.post('/oauth/exchange', async (req, res) => {
+  try {
+    const { code } = req.body;
+    if (!code) return res.status(400).json({ error: 'Missing authorization code' });
+
+    const credentials = await exchangeCodeForTokens(code);
+    res.json({
+      ok: true,
+      token: credentials.accessToken,
+      expiresAt: credentials.expiresAt,
     });
-  });
-}
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
 
 /**
- * Check if a command exists on the system.
+ * GET /api/oauth/token — Get a valid access token (auto-refreshes if expired).
  */
-function whichCommand(cmd) {
-  return new Promise((resolve) => {
-    exec(`which ${cmd}`, { timeout: 3000 }, (err, stdout) => {
-      resolve(err ? null : stdout.trim());
-    });
-  });
-}
+router.get('/oauth/token', async (_req, res) => {
+  try {
+    const token = await getValidAccessToken();
+    if (!token) return res.status(404).json({ error: 'No OAuth credentials. Please sign in first.' });
+    res.json({ token });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // GET /api/ai-config — return saved AI configuration (provider, key, model)
 router.get('/ai-config', (_req, res) => {

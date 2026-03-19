@@ -37,10 +37,12 @@ export function resolveApiKey(provider, clientKey) {
     const envKey = process.env.OPENAI_API_KEY || null;
     if (envKey) return envKey;
   }
-  // Fall back to shellmate.json saved config
+  // Fall back to shellmate.json saved config (API key or OAuth token)
   try {
     const cfg = readConfig();
     if (cfg.ai?.apiKey) return cfg.ai.apiKey;
+    // Check for OAuth access token (may be expired — agentChat handles refresh)
+    if (cfg.ai?.oauth?.accessToken) return cfg.ai.oauth.accessToken;
   } catch {}
   return null;
 }

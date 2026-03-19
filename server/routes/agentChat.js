@@ -7,6 +7,7 @@ import { resolveAgentWorkspace } from '../utils/workspace.js';
 import { initSse, sendSse } from '../utils/sse.js';
 import { getToolsForAgent } from '../tools/registry.js';
 import { runAnthropicLoop, runOpenAILoop } from '../tools/loop.js';
+import { getValidAccessToken } from '../utils/anthropic-oauth.js';
 
 const router = Router();
 
@@ -58,7 +59,16 @@ router.post('/agent-chat/:agentId', async (req, res) => {
   const system = buildSystemPrompt(workspace);
 
   const actualProvider = normalizeProvider(provider);
-  const apiKey = resolveApiKey(actualProvider, clientApiKey);
+  let apiKey = resolveApiKey(actualProvider, clientApiKey);
+
+  // If the resolved key is an OAuth token, try to auto-refresh if expired
+  if (apiKey?.startsWith('sk-ant-oat') || (!apiKey && actualProvider === 'anthropic')) {
+    try {
+      const freshToken = await getValidAccessToken();
+      if (freshToken) apiKey = freshToken;
+    } catch {}
+  }
+
   if (!apiKey) return res.status(400).json({ error: 'No API key available' });
 
   const agentConfig = getAgentConfig(agentId);
@@ -86,14 +96,8 @@ router.post('/agent-chat/:agentId', async (req, res) => {
     sendSse(res, 'done', {});
   } catch (err) {
     const msg = err.message || '';
-    // Detect expired OAuth token and give helpful message
-    if (msg.includes('authentication') || msg.includes('401') || msg.includes('invalid') || msg.includes('bearer')) {
-      const isOAuth = apiKey?.startsWith('sk-ant-oat');
-      if (isOAuth) {
-        sendSse(res, 'error', { message: 'Your Claude token has expired. Open Terminal and run: claude auth token — then update it in Settings.' });
-      } else {
-        sendSse(res, 'error', { message: 'API key error: ' + msg + '. Check your key in Settings.' });
-      }
+    if (msg.includes('authentication') || msg.includes('401') || msg.includes('invalid')) {
+      sendSse(res, 'error', { message: 'Authentication error. Please check your API key or sign in again in Settings.' });
     } else {
       sendSse(res, 'error', { message: msg });
     }
