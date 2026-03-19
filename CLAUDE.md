@@ -58,7 +58,7 @@ No test framework is configured. No linter is configured.
 
 ## Versioning
 
-Stay below `1.0.0` until the product generates revenue. Current: `0.0.3`.
+Stay below `1.0.0` until the product generates revenue. Current: `0.0.4`.
 
 ## Release
 
