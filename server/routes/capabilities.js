@@ -30,8 +30,8 @@ router.get('/capabilities', (_req, res) => {
       },
     },
     webSearch: {
-      enabled:  !!webSearch.provider,
-      provider: webSearch.provider || 'brave',
+      enabled:  true,  // Always enabled — DuckDuckGo needs no key
+      provider: webSearch.provider || 'duckduckgo',
       braveApiKey:      webSearch.apiKey ? '***' : '',
       perplexityApiKey: webSearch.perplexity?.apiKey ? '***' : '',
     },
@@ -99,8 +99,11 @@ router.post('/capabilities', (req, res) => {
     if (!cfg.tools.web) cfg.tools.web = {};
 
     if (webSearch) {
-      if (!webSearch.enabled) {
-        delete cfg.tools.web.search;
+      if (webSearch.provider === 'duckduckgo' || webSearch.provider === 'google' || !webSearch.provider) {
+        cfg.tools.web.search = {
+          ...(cfg.tools.web.search || {}),
+          provider: 'duckduckgo',
+        };
       } else if (webSearch.provider === 'brave') {
         cfg.tools.web.search = {
           ...(cfg.tools.web.search || {}),

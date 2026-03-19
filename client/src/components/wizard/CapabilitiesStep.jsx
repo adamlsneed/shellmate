@@ -130,9 +130,10 @@ export default function CapabilitiesStep() {
   const [lancedbKey, setLancedbKey]   = useState('');
   const [lancedbModel, setLancedbModel] = useState('text-embedding-3-small');
 
-  // Web search (Brave only)
-  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
+  // Web search (DuckDuckGo default, Brave/Perplexity optional)
+  const [searchProvider, setSearchProvider] = useState('duckduckgo');
   const [braveKey, setBraveKey] = useState('');
+  const [perplexityKey, setPerplexityKey] = useState('');
 
   // Web browsing
   const [webFetchEnabled, setWebFetchEnabled] = useState(false);
@@ -162,9 +163,9 @@ export default function CapabilitiesStep() {
         setLancedbKey(d.memory?.lancedb?.embeddingApiKey || '');
         setLancedbModel(d.memory?.lancedb?.embeddingModel || 'text-embedding-3-small');
 
-        const currentSearch = d.webSearch?.enabled || false;
-        setWebSearchEnabled(currentSearch || teamSpec.capabilities?.webSearch || false);
+        setSearchProvider(d.webSearch?.provider || 'duckduckgo');
         setBraveKey(d.webSearch?.braveApiKey || '');
+        setPerplexityKey(d.webSearch?.perplexityApiKey || '');
 
         setWebFetchEnabled(d.webFetch?.enabled || teamSpec.capabilities?.webFetch || false);
 
@@ -216,9 +217,9 @@ export default function CapabilitiesStep() {
             },
           },
           webSearch: {
-            enabled: webSearchEnabled,
-            provider: 'brave',
+            provider: searchProvider,
             braveApiKey: braveKey,
+            perplexityApiKey: perplexityKey,
           },
           webFetch: { enabled: webFetchEnabled },
           homeAssistant: { enabled: haEnabled, token: haToken, url: haUrl },
@@ -372,23 +373,72 @@ export default function CapabilitiesStep() {
           </div>
         </div>
 
-        {/* Web Search -- Brave only */}
-        <CapabilityCard
-          title="Web Search"
-          icon="&#x1F50D;"
-          description="Search the web for real-time information using Brave Search."
-          enabled={webSearchEnabled}
-          onToggle={setWebSearchEnabled}
-        >
-          <Field
-            label="Brave Search API Key"
-            value={braveKey}
-            onChange={setBraveKey}
-            placeholder="BSA..."
-            type="password"
-            hint={<><a href="https://api.search.brave.com" target="_blank" rel="noopener noreferrer" className="text-shell-400 hover:text-shell-300 underline">Sign up at api.search.brave.com</a> &rarr; Create an app &rarr; copy the API key. Free tier: 2,000 queries/month.</>}
-          />
-        </CapabilityCard>
+        {/* Web Search — provider picker */}
+        <div className="border border-gray-800 bg-gray-800/20 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-lg">&#x1F50D;</span>
+            <span className="font-semibold text-sm text-white">Web Search</span>
+          </div>
+          <p className="text-xs text-gray-500 mb-4 ml-7">
+            Search the web for real-time information. Works out of the box — no setup needed.
+          </p>
+
+          <div className="ml-7 space-y-3">
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: 'duckduckgo', label: 'DuckDuckGo', desc: 'No API key needed', badge: 'default' },
+                { id: 'brave',      label: 'Brave',      desc: 'Privacy-focused (needs API key)' },
+                { id: 'perplexity', label: 'Perplexity', desc: 'AI-powered answers (needs API key)' },
+              ].map(opt => (
+                <button
+                  key={opt.id}
+                  onClick={() => setSearchProvider(opt.id)}
+                  className={`text-left p-3 rounded-lg border text-xs transition-colors ${
+                    searchProvider === opt.id
+                      ? 'border-shell-500 bg-shell-900/30 text-white'
+                      : 'border-gray-700 bg-navy-900/30 text-gray-400 hover:border-gray-600'
+                  }`}
+                >
+                  <div className="font-semibold mb-0.5 flex items-center gap-1.5">
+                    {opt.label}
+                    {opt.badge && (
+                      <span className="text-[10px] px-1 py-0.5 rounded leading-none bg-shell-900/50 text-shell-400 border border-shell-700">
+                        {opt.badge}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-gray-500">{opt.desc}</div>
+                </button>
+              ))}
+            </div>
+
+            {searchProvider === 'brave' && (
+              <div className="pt-2 border-t border-gray-700">
+                <Field
+                  label="Brave Search API Key"
+                  value={braveKey}
+                  onChange={setBraveKey}
+                  placeholder="BSA..."
+                  type="password"
+                  hint={<><a href="https://api.search.brave.com" target="_blank" rel="noopener noreferrer" className="text-shell-400 hover:text-shell-300 underline">Sign up at api.search.brave.com</a> &rarr; Create an app &rarr; copy the API key. Free tier: 2,000 queries/month.</>}
+                />
+              </div>
+            )}
+
+            {searchProvider === 'perplexity' && (
+              <div className="pt-2 border-t border-gray-700">
+                <Field
+                  label="Perplexity API Key (via OpenRouter)"
+                  value={perplexityKey}
+                  onChange={setPerplexityKey}
+                  placeholder="sk-or-..."
+                  type="password"
+                  hint={<><a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-shell-400 hover:text-shell-300 underline">Get an OpenRouter key</a> &rarr; API Keys &rarr; Create key. Perplexity/sonar-pro costs ~$3/1000 queries.</>}
+                />
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Web Browsing */}
         <CapabilityCard

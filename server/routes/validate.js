@@ -48,13 +48,23 @@ router.post('/validate', (_req, res) => {
     allPassed = false;
   }
 
-  // 4. Web search key (if search is enabled)
+  // 4. Web search
   const searchCfg = cfg.tools?.web?.search;
-  if (searchCfg?.provider === 'brave') {
+  const searchProvider = searchCfg?.provider || 'duckduckgo';
+  if (searchProvider === 'duckduckgo' || searchProvider === 'google') {
+    checks.push({ name: 'Web search', passed: true, detail: 'Web search enabled (no API key needed)' });
+  } else if (searchProvider === 'brave') {
     if (searchCfg.apiKey) {
       checks.push({ name: 'Web search', passed: true, detail: 'Brave Search API key configured' });
     } else {
       checks.push({ name: 'Web search', passed: false, detail: 'Brave Search enabled but no API key set' });
+      allPassed = false;
+    }
+  } else if (searchProvider === 'perplexity') {
+    if (searchCfg.perplexity?.apiKey) {
+      checks.push({ name: 'Web search', passed: true, detail: 'Perplexity Search configured' });
+    } else {
+      checks.push({ name: 'Web search', passed: false, detail: 'Perplexity enabled but no API key set' });
       allPassed = false;
     }
   }
