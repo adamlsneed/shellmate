@@ -85,7 +85,18 @@ router.post('/agent-chat/:agentId', async (req, res) => {
     });
     sendSse(res, 'done', {});
   } catch (err) {
-    sendSse(res, 'error', { message: err.message });
+    const msg = err.message || '';
+    // Detect expired OAuth token and give helpful message
+    if (msg.includes('authentication') || msg.includes('401') || msg.includes('invalid') || msg.includes('bearer')) {
+      const isOAuth = apiKey?.startsWith('sk-ant-oat');
+      if (isOAuth) {
+        sendSse(res, 'error', { message: 'Your Claude token has expired. Open Terminal and run: claude auth token — then update it in Settings.' });
+      } else {
+        sendSse(res, 'error', { message: 'API key error: ' + msg + '. Check your key in Settings.' });
+      }
+    } else {
+      sendSse(res, 'error', { message: msg });
+    }
   } finally {
     res.end();
   }
