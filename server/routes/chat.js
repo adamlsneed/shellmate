@@ -43,7 +43,7 @@ router.post('/chat', async (req, res) => {
 // Check whether the server has credentials available via env vars
 router.get('/chat/env-status', async (_req, res) => {
   try {
-    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    const anthropicKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_CODE_OAUTH_TOKEN;
     const openaiKey = process.env.OPENAI_API_KEY;
 
     let model = null;

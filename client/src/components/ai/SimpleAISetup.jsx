@@ -10,6 +10,7 @@ export default function SimpleAISetup({ onDone }) {
   const [accessCode, setAccessCode] = useState('');
   const [error, setError] = useState('');
   const [testing, setTesting] = useState(false);
+  const [signinTab, setSigninTab] = useState('subscription'); // 'subscription' | 'apikey'
 
   // Check if the person setting this up already put the key on the computer
   useEffect(() => {
@@ -53,8 +54,8 @@ export default function SimpleAISetup({ onDone }) {
         const msg = data.error || '';
         if (res.status === 401) {
           setError("That didn't work. Please double-check it and try again.");
-        } else if (msg.includes('OAuth authentication is currently not supported')) {
-          setError("Claude sign-in tokens aren't available right now. Try using an access code from console.anthropic.com instead.");
+        } else if (msg.includes('OAuth authentication is currently not supported') || msg.includes('oauth')) {
+          setError("This OAuth token didn't work. It may have expired — try running 'claude auth token' again in Terminal to get a fresh one.");
         } else if (msg.includes('credit') || msg.includes('balance') || msg.includes('quota')) {
           setError("Your account doesn't have enough credit. You may need to add a payment method.");
         } else {
@@ -119,44 +120,100 @@ export default function SimpleAISetup({ onDone }) {
       <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center">
         <div className="text-6xl mb-6">🐢</div>
         <h1 className="text-h2 text-[var(--text-primary)] mb-6">
-          Sign in with your Claude account
+          Connect your Claude account
         </h1>
 
-        <div className="w-full max-w-md text-left space-y-5 mb-8">
-          <Step number={1}>
-            <span>If you don't have one yet, </span>
-            <a
-              href="https://claude.ai"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[var(--accent)] underline font-medium"
-            >
-              create a Claude account
-            </a>
-            <span> (you'll need a Pro or Max plan).</span>
-          </Step>
-
-          <Step number={2}>
-            <span>Go to </span>
-            <a
-              href="https://console.anthropic.com/settings/keys"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[var(--accent)] underline font-medium"
-            >
-              your API keys page
-            </a>
-            <span> and sign in.</span>
-          </Step>
-
-          <Step number={3}>
-            Click the <strong className="text-[var(--text-primary)]">Create Key</strong> button, give it any name (like "Shellmate"), and click <strong className="text-[var(--text-primary)]">Create Key</strong>.
-          </Step>
-
-          <Step number={4}>
-            Copy the key that appears and paste it below.
-          </Step>
+        {/* Tab toggle: Pro/Max vs API Key */}
+        <div className="flex rounded-friendly overflow-hidden border border-[var(--border)] mb-6 w-full max-w-sm">
+          <button
+            onClick={() => setSigninTab('subscription')}
+            className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+              signinTab === 'subscription'
+                ? 'bg-[var(--accent)] text-white'
+                : 'bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            Pro / Max / Team
+          </button>
+          <button
+            onClick={() => setSigninTab('apikey')}
+            className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+              signinTab === 'apikey'
+                ? 'bg-[var(--accent)] text-white'
+                : 'bg-[var(--bg-card)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'
+            }`}
+          >
+            API Key
+          </button>
         </div>
+
+        {signinTab === 'subscription' ? (
+          <div className="w-full max-w-md text-left space-y-5 mb-8">
+            <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-friendly p-4 mb-2">
+              <p className="text-sm text-[var(--text-secondary)]">
+                If you have a <strong className="text-[var(--text-primary)]">Claude Pro</strong>, <strong className="text-[var(--text-primary)]">Max</strong>, or <strong className="text-[var(--text-primary)]">Team</strong> subscription, you can use it with Shellmate — no separate API billing needed.
+              </p>
+            </div>
+
+            <Step number={1}>
+              <span>Open a terminal on your Mac (search for "Terminal" in Spotlight).</span>
+            </Step>
+
+            <Step number={2}>
+              <span>Install Claude Code if you haven't already:</span>
+              <code className="block mt-2 bg-[var(--bg-primary)] text-[var(--accent)] text-sm px-3 py-2 rounded-friendly select-all">
+                npm install -g @anthropic-ai/claude-code
+              </code>
+            </Step>
+
+            <Step number={3}>
+              <span>Run this command and sign in when your browser opens:</span>
+              <code className="block mt-2 bg-[var(--bg-primary)] text-[var(--accent)] text-sm px-3 py-2 rounded-friendly select-all">
+                claude auth login
+              </code>
+            </Step>
+
+            <Step number={4}>
+              <span>After signing in, run this to get your token:</span>
+              <code className="block mt-2 bg-[var(--bg-primary)] text-[var(--accent)] text-sm px-3 py-2 rounded-friendly select-all">
+                claude auth token
+              </code>
+            </Step>
+
+            <Step number={5}>
+              Copy the token that appears (starts with <code className="text-[var(--accent)]">sk-ant-oat-</code>) and paste it below.
+            </Step>
+          </div>
+        ) : (
+          <div className="w-full max-w-md text-left space-y-5 mb-8">
+            <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-friendly p-4 mb-2">
+              <p className="text-sm text-[var(--text-secondary)]">
+                API keys use <strong className="text-[var(--text-primary)]">pay-as-you-go</strong> billing (separate from your Claude subscription). Great if you want usage-based pricing.
+              </p>
+            </div>
+
+            <Step number={1}>
+              <span>Go to </span>
+              <a
+                href="https://console.anthropic.com/settings/keys"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[var(--accent)] underline font-medium"
+              >
+                console.anthropic.com/settings/keys
+              </a>
+              <span> and sign in.</span>
+            </Step>
+
+            <Step number={2}>
+              Click <strong className="text-[var(--text-primary)]">Create Key</strong>, name it "Shellmate", and copy it.
+            </Step>
+
+            <Step number={3}>
+              Paste the key below.
+            </Step>
+          </div>
+        )}
 
         <div className="w-full max-w-sm space-y-4">
           <input
@@ -164,7 +221,7 @@ export default function SimpleAISetup({ onDone }) {
             value={accessCode}
             onChange={e => { setAccessCode(e.target.value); setError(''); }}
             onKeyDown={e => e.key === 'Enter' && handleConnect()}
-            placeholder="Paste your key here"
+            placeholder={signinTab === 'subscription' ? 'Paste your token here (sk-ant-oat-...)' : 'Paste your API key here (sk-ant-api...)'}
             className="w-full min-h-input px-5 rounded-friendly text-body bg-[var(--bg-card)] text-[var(--text-primary)] border-2 border-[var(--border)] focus:border-[var(--accent)] focus:outline-none focus:ring-4 focus:ring-shell-300"
             autoFocus
           />
