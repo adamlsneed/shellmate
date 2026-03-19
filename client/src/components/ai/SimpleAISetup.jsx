@@ -71,29 +71,40 @@ export default function SimpleAISetup({ onDone }) {
       const data = await res.json();
 
       if (data.ok && data.token) {
-        // Validate the token works
+        // Validate the token — try models from newest to oldest until one works
         setOauthMessage('Verifying your account...');
-        const testRes = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            messages: [{ role: 'user', content: 'Hi' }],
-            provider: 'anthropic',
-            model: 'claude-sonnet-4-6',
-            apiKey: data.token,
-          }),
-        });
+        const modelsToTry = ['claude-sonnet-4-6', 'claude-haiku-4-5-20251001', 'claude-3-haiku-20240307'];
+        let workingModel = null;
 
-        if (testRes.ok) {
-          configure({ provider: 'anthropic', apiKey: data.token, model: 'claude-sonnet-4-6', envKey: false });
+        for (const model of modelsToTry) {
+          try {
+            const testRes = await fetch('/api/chat', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                messages: [{ role: 'user', content: 'Hi' }],
+                provider: 'anthropic',
+                model,
+                apiKey: data.token,
+              }),
+            });
+            if (testRes.ok) {
+              workingModel = model;
+              break;
+            }
+          } catch {}
+        }
+
+        if (workingModel) {
+          configure({ provider: 'anthropic', apiKey: data.token, model: workingModel, envKey: false });
           onDone();
           return;
         }
 
-        // Token didn't work
+        // No model worked
         setOauthStatus('error');
         setOauthMessage('');
-        setError('Sign-in succeeded but the token could not connect. Please try the API Key option instead.');
+        setError('Sign-in succeeded but could not connect to Claude. Please try the API Key option instead.');
       } else {
         setOauthStatus('error');
         setOauthMessage('');
@@ -112,8 +123,27 @@ export default function SimpleAISetup({ onDone }) {
       const data = await res.json();
 
       if (data.ok && data.token) {
-        configure({ provider: 'anthropic', apiKey: data.token, model: 'claude-sonnet-4-6', envKey: false });
-        onDone();
+        // Find a working model for this token
+        const modelsToTry = ['claude-sonnet-4-6', 'claude-haiku-4-5-20251001', 'claude-3-haiku-20240307'];
+        for (const model of modelsToTry) {
+          try {
+            const testRes = await fetch('/api/chat', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                messages: [{ role: 'user', content: 'Hi' }],
+                provider: 'anthropic', model,
+                apiKey: data.token,
+              }),
+            });
+            if (testRes.ok) {
+              configure({ provider: 'anthropic', apiKey: data.token, model, envKey: false });
+              onDone();
+              return;
+            }
+          } catch {}
+        }
+        setOauthStatus(null); // No model worked — show manual button
       } else {
         setOauthStatus(null);
       }
