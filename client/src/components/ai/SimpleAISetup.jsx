@@ -71,37 +71,28 @@ export default function SimpleAISetup({ onDone }) {
       const data = await res.json();
 
       if (data.ok && data.token) {
-        // Validate the token — try models from newest to oldest until one works
+        // Validate the token with Haiku (subscription OAuth tokens only support Haiku)
         setOauthMessage('Verifying your account...');
-        const modelsToTry = ['claude-sonnet-4-6', 'claude-haiku-4-5-20251001', 'claude-3-haiku-20240307'];
-        let workingModel = null;
+        const oauthModel = 'claude-haiku-4-5-20251001';
+        try {
+          const testRes = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              messages: [{ role: 'user', content: 'Hi' }],
+              provider: 'anthropic',
+              model: oauthModel,
+              apiKey: data.token,
+            }),
+          });
+          if (testRes.ok) {
+            configure({ provider: 'anthropic', apiKey: data.token, model: oauthModel, envKey: false });
+            onDone();
+            return;
+          }
+        } catch {}
 
-        for (const model of modelsToTry) {
-          try {
-            const testRes = await fetch('/api/chat', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                messages: [{ role: 'user', content: 'Hi' }],
-                provider: 'anthropic',
-                model,
-                apiKey: data.token,
-              }),
-            });
-            if (testRes.ok) {
-              workingModel = model;
-              break;
-            }
-          } catch {}
-        }
-
-        if (workingModel) {
-          configure({ provider: 'anthropic', apiKey: data.token, model: workingModel, envKey: false });
-          onDone();
-          return;
-        }
-
-        // No model worked
+        // Token validation failed
         setOauthStatus('error');
         setOauthMessage('');
         setError('Sign-in succeeded but could not connect to Claude. Please try the API Key option instead.');
@@ -123,27 +114,24 @@ export default function SimpleAISetup({ onDone }) {
       const data = await res.json();
 
       if (data.ok && data.token) {
-        // Find a working model for this token
-        const modelsToTry = ['claude-sonnet-4-6', 'claude-haiku-4-5-20251001', 'claude-3-haiku-20240307'];
-        for (const model of modelsToTry) {
-          try {
-            const testRes = await fetch('/api/chat', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                messages: [{ role: 'user', content: 'Hi' }],
-                provider: 'anthropic', model,
-                apiKey: data.token,
-              }),
-            });
-            if (testRes.ok) {
-              configure({ provider: 'anthropic', apiKey: data.token, model, envKey: false });
-              onDone();
-              return;
-            }
-          } catch {}
-        }
-        setOauthStatus(null); // No model worked — show manual button
+        const oauthModel = 'claude-haiku-4-5-20251001';
+        try {
+          const testRes = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              messages: [{ role: 'user', content: 'Hi' }],
+              provider: 'anthropic', model: oauthModel,
+              apiKey: data.token,
+            }),
+          });
+          if (testRes.ok) {
+            configure({ provider: 'anthropic', apiKey: data.token, model: oauthModel, envKey: false });
+            onDone();
+            return;
+          }
+        } catch {}
+        setOauthStatus(null);
       } else {
         setOauthStatus(null);
       }
