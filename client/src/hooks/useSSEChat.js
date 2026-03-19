@@ -63,6 +63,20 @@ export function useSSEChat() {
             currentText = '';
           }
 
+          if (type === 'confirm') {
+            setChatItems(prev => [
+              ...prev,
+              {
+                type: 'confirm',
+                confirmId: data.confirmId,
+                tool: data.tool,
+                action: data.action,
+                tier: data.tier,
+                description: data.description,
+              },
+            ]);
+          }
+
           if (type === 'error') {
             setError(data.message || 'An error occurred');
           }
@@ -111,5 +125,17 @@ export function useSSEChat() {
     }
   }
 
-  return { chatItems, loading, error, sendMessage };
+  async function grantPermission(confirmId, granted) {
+    try {
+      await fetch('/api/tools/grant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirmId, granted }),
+      });
+    } catch (err) {
+      setError(`Permission grant failed: ${err.message}`);
+    }
+  }
+
+  return { chatItems, loading, error, sendMessage, grantPermission };
 }

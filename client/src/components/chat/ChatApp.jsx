@@ -3,10 +3,11 @@ import { useSSEChat } from '../../hooks/useSSEChat.js';
 import { MessageBubble } from '../common/MessageBubble.jsx';
 import ToolCallDisplay from './ToolCallDisplay.jsx';
 import { QuickActions } from '../common/QuickActions.jsx';
+import PermissionCard from './PermissionCard.jsx';
 import { useThemeStore } from '../../theme.js';
 
 export default function ChatApp({ onSettings }) {
-  const { chatItems, sendMessage, loading, error } = useSSEChat();
+  const { chatItems, sendMessage, grantPermission, loading, error } = useSSEChat();
   const [input, setInput] = useState('');
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
@@ -76,6 +77,7 @@ export default function ChatApp({ onSettings }) {
 
           {chatItems.map((item, i) => {
             if (item.type === 'tool_call') return <ToolCallDisplay key={i} {...item} friendly={true} />;
+            if (item.type === 'confirm') return <PermissionCard key={i} {...item} onGrant={grantPermission} />;
             if (item.type === 'user') return <MessageBubble key={i} role="user" content={item.content} showAvatar={true} />;
             if (item.type === 'assistant') return <MessageBubble key={i} role="assistant" content={item.content} showAvatar={true} />;
             return null;
