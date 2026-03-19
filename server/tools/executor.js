@@ -7,6 +7,7 @@ import { exec } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { routeSearch } from './search-providers.js';
 
 // Sensitive paths that the AI should never access
 const BLOCKED_PATHS = [
@@ -156,23 +157,7 @@ export function fileList({ path: dirPath, recursive = false }) {
 }
 
 export async function webSearch({ query, count = 5 }, context = {}) {
-  const braveApiKey = context.braveApiKey;
-  if (!braveApiKey) return 'Web search not configured — no Brave API key found.';
-  try {
-    const params = new URLSearchParams({ q: query, count: Math.min(count, 20) });
-    const res = await fetch(`https://api.search.brave.com/res/v1/web/search?${params}`, {
-      headers: { 'X-Subscription-Token': braveApiKey, Accept: 'application/json' },
-    });
-    if (!res.ok) return `Search API error: ${res.status} ${res.statusText}`;
-    const data = await res.json();
-    const results = (data.web?.results || []).slice(0, count);
-    if (results.length === 0) return 'No results found.';
-    return results.map((r, i) =>
-      `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.description || ''}`
-    ).join('\n\n');
-  } catch (err) {
-    return `Search error: ${err.message}`;
-  }
+  return routeSearch({ query, count }, context);
 }
 
 export async function webFetch({ url }) {
@@ -207,17 +192,3 @@ export async function webFetch({ url }) {
   }
 }
 
-/**
- * Execute a tool by name with given input. Returns string result.
- */
-export async function executeTool(name, input, context = {}) {
-  switch (name) {
-    case 'shell_exec':  return shellExec(input);
-    case 'file_read':   return fileRead(input);
-    case 'file_write':  return fileWrite(input);
-    case 'file_list':   return fileList(input);
-    case 'web_search':  return webSearch(input, context);
-    case 'web_fetch':   return webFetch(input);
-    default:            return `Unknown tool: ${name}`;
-  }
-}

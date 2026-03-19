@@ -39,9 +39,14 @@ function getAgentConfig(agentId) {
   return (cfg.agents?.list || []).find(a => a.id === agentId) || {};
 }
 
-function getBraveApiKey() {
+function getSearchContext() {
   const cfg = readConfig();
-  return cfg.tools?.web?.search?.apiKey || '';
+  const searchCfg = cfg.tools?.web?.search || {};
+  return {
+    searchProvider: searchCfg.provider || 'duckduckgo',
+    braveApiKey: searchCfg.apiKey || '',
+    perplexityApiKey: searchCfg.perplexity?.apiKey || '',
+  };
 }
 
 // POST /api/agent-chat/:agentId — SSE streaming with tool execution
@@ -58,7 +63,7 @@ router.post('/agent-chat/:agentId', async (req, res) => {
 
   const agentConfig = getAgentConfig(agentId);
   const tools = getToolsForAgent(agentConfig);
-  const context = { braveApiKey: getBraveApiKey() };
+  const context = getSearchContext();
 
   initSse(res);
 
