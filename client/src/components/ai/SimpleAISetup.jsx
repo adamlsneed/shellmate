@@ -10,7 +10,9 @@ export default function SimpleAISetup({ onDone }) {
   const [accessCode, setAccessCode] = useState('');
   const [error, setError] = useState('');
   const [testing, setTesting] = useState(false);
-  const [signinTab, setSigninTab] = useState('subscription'); // 'subscription' | 'apikey'
+  const [signinTab, setSigninTab] = useState('subscription');
+  const [oauthStatus, setOauthStatus] = useState(null); // null | 'checking' | 'connecting' | 'waiting' | 'error'
+  const [oauthMessage, setOauthMessage] = useState('');
 
   // Check if the person setting this up already put the key on the computer
   useEffect(() => {
@@ -27,12 +29,98 @@ export default function SimpleAISetup({ onDone }) {
       .catch(() => {});
   }, []);
 
+  // When user switches to subscription tab, check OAuth status
+  useEffect(() => {
+    if (view === VIEW.SIGNIN && signinTab === 'subscription') {
+      checkOAuthStatus();
+    }
+  }, [view, signinTab]);
+
+  async function checkOAuthStatus() {
+    setOauthStatus('checking');
+    setOauthMessage('Checking for existing Claude sign-in...');
+    try {
+      const res = await fetch('/api/oauth/status');
+      const data = await res.json();
+
+      if (data.available) {
+        // Token already exists — grab it and connect
+        setOauthMessage('Found your Claude account! Connecting...');
+        await connectWithOAuth();
+      } else {
+        setOauthStatus(null); // Ready to show the sign-in button
+      }
+    } catch {
+      setOauthStatus(null);
+    }
+  }
+
+  async function startOAuthFlow() {
+    setOauthStatus('connecting');
+    setOauthMessage('Opening your browser to sign in with Claude...');
+    setError('');
+
+    try {
+      const res = await fetch('/api/oauth/connect', { method: 'POST' });
+      const data = await res.json();
+
+      if (data.ok && data.token) {
+        // Validate the token works
+        setOauthMessage('Verifying your account...');
+        const testRes = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [{ role: 'user', content: 'Hi' }],
+            provider: 'anthropic',
+            model: 'claude-sonnet-4-6',
+            apiKey: data.token,
+          }),
+        });
+
+        if (testRes.ok) {
+          configure({ provider: 'anthropic', apiKey: data.token, model: 'claude-sonnet-4-6', envKey: false });
+          onDone();
+          return;
+        }
+
+        // Token didn't work
+        setOauthStatus('error');
+        setOauthMessage('');
+        setError('Sign-in succeeded but the token could not connect. Please try the API Key option instead.');
+      } else {
+        setOauthStatus('error');
+        setOauthMessage('');
+        setError(data.error || 'Sign-in failed. Please try again or use an API key.');
+      }
+    } catch {
+      setOauthStatus('error');
+      setOauthMessage('');
+      setError("Couldn't connect. Check your internet and try again.");
+    }
+  }
+
+  async function connectWithOAuth() {
+    try {
+      const res = await fetch('/api/oauth/connect', { method: 'POST' });
+      const data = await res.json();
+
+      if (data.ok && data.token) {
+        configure({ provider: 'anthropic', apiKey: data.token, model: 'claude-sonnet-4-6', envKey: false });
+        onDone();
+      } else {
+        setOauthStatus(null);
+      }
+    } catch {
+      setOauthStatus(null);
+    }
+  }
+
   async function handleConnect() {
     if (!accessCode.trim()) return;
     setError('');
     setTesting(true);
 
-    // Auto-detect provider from key format
     const key = accessCode.trim();
     const isAnthropic = key.startsWith('sk-ant-');
     const provider = isAnthropic ? 'anthropic' : 'openai';
@@ -54,8 +142,6 @@ export default function SimpleAISetup({ onDone }) {
         const msg = data.error || '';
         if (res.status === 401) {
           setError("That didn't work. Please double-check it and try again.");
-        } else if (msg.includes('OAuth authentication is currently not supported') || msg.includes('oauth')) {
-          setError("This OAuth token didn't work. It may have expired — try running 'claude auth token' again in Terminal to get a fresh one.");
         } else if (msg.includes('credit') || msg.includes('balance') || msg.includes('quota')) {
           setError("Your account doesn't have enough credit. You may need to add a payment method.");
         } else {
@@ -94,7 +180,7 @@ export default function SimpleAISetup({ onDone }) {
               Sign in with Claude
             </div>
             <div className="text-small text-[var(--text-muted)]">
-              Use your existing Claude account (Pro or Max plan)
+              Use your existing Claude account (Pro, Max, or Team plan)
             </div>
           </button>
 
@@ -148,41 +234,50 @@ export default function SimpleAISetup({ onDone }) {
         </div>
 
         {signinTab === 'subscription' ? (
-          <div className="w-full max-w-md text-left space-y-5 mb-8">
-            <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-friendly p-4 mb-2">
+          <div className="w-full max-w-md space-y-5 mb-6">
+            <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-friendly p-4">
               <p className="text-sm text-[var(--text-secondary)]">
                 If you have a <strong className="text-[var(--text-primary)]">Claude Pro</strong>, <strong className="text-[var(--text-primary)]">Max</strong>, or <strong className="text-[var(--text-primary)]">Team</strong> subscription, you can use it with Shellmate — no separate API billing needed.
               </p>
             </div>
 
-            <Step number={1}>
-              <span>Open a terminal on your Mac (search for "Terminal" in Spotlight).</span>
-            </Step>
+            {/* Status messages */}
+            {oauthStatus === 'checking' && (
+              <div className="flex items-center justify-center gap-3 py-6">
+                <span className="inline-block w-5 h-5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+                <span className="text-body text-[var(--text-muted)]">{oauthMessage}</span>
+              </div>
+            )}
 
-            <Step number={2}>
-              <span>Install Claude Code if you haven't already:</span>
-              <code className="block mt-2 bg-[var(--bg-primary)] text-[var(--accent)] text-sm px-3 py-2 rounded-friendly select-all">
-                npm install -g @anthropic-ai/claude-code
-              </code>
-            </Step>
+            {oauthStatus === 'connecting' && (
+              <div className="py-6 space-y-4">
+                <div className="flex items-center justify-center gap-3">
+                  <span className="inline-block w-5 h-5 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
+                  <span className="text-body text-[var(--text-muted)]">{oauthMessage}</span>
+                </div>
+                <p className="text-sm text-[var(--text-muted)]">
+                  A browser window should have opened. Sign in with your Claude account there, then come back here.
+                </p>
+              </div>
+            )}
 
-            <Step number={3}>
-              <span>Run this command and sign in when your browser opens:</span>
-              <code className="block mt-2 bg-[var(--bg-primary)] text-[var(--accent)] text-sm px-3 py-2 rounded-friendly select-all">
-                claude auth login
-              </code>
-            </Step>
+            {/* Sign in button (shown when no status or error) */}
+            {(!oauthStatus || oauthStatus === 'error') && (
+              <div className="space-y-4">
+                <BigButton onClick={startOAuthFlow} className="w-full">
+                  Sign in with Claude
+                </BigButton>
+                <p className="text-sm text-[var(--text-muted)]">
+                  This will open your browser. Sign in with your Claude account, and Shellmate will connect automatically.
+                </p>
+              </div>
+            )}
 
-            <Step number={4}>
-              <span>After signing in, run this to get your token:</span>
-              <code className="block mt-2 bg-[var(--bg-primary)] text-[var(--accent)] text-sm px-3 py-2 rounded-friendly select-all">
-                claude auth token
-              </code>
-            </Step>
-
-            <Step number={5}>
-              Copy the token that appears (starts with <code className="text-[var(--accent)]">sk-ant-oat-</code>) and paste it below.
-            </Step>
+            {error && (
+              <p className="text-body text-red-500 bg-red-50 dark:bg-red-900/20 rounded-friendly px-4 py-3 text-left">
+                {error}
+              </p>
+            )}
           </div>
         ) : (
           <div className="w-full max-w-md text-left space-y-5 mb-8">
@@ -212,41 +307,41 @@ export default function SimpleAISetup({ onDone }) {
             <Step number={3}>
               Paste the key below.
             </Step>
+
+            <div className="space-y-4">
+              <input
+                type="password"
+                value={accessCode}
+                onChange={e => { setAccessCode(e.target.value); setError(''); }}
+                onKeyDown={e => e.key === 'Enter' && handleConnect()}
+                placeholder="Paste your API key here (sk-ant-api...)"
+                className="w-full min-h-input px-5 rounded-friendly text-body bg-[var(--bg-card)] text-[var(--text-primary)] border-2 border-[var(--border)] focus:border-[var(--accent)] focus:outline-none focus:ring-4 focus:ring-shell-300"
+                autoFocus
+              />
+
+              {error && (
+                <p className="text-body text-red-500 bg-red-50 dark:bg-red-900/20 rounded-friendly px-4 py-3 text-left">
+                  {error}
+                </p>
+              )}
+
+              <BigButton
+                onClick={handleConnect}
+                disabled={!accessCode.trim() || testing}
+                className="w-full"
+              >
+                {testing ? 'Connecting...' : 'Connect'}
+              </BigButton>
+            </div>
           </div>
         )}
 
-        <div className="w-full max-w-sm space-y-4">
-          <input
-            type="password"
-            value={accessCode}
-            onChange={e => { setAccessCode(e.target.value); setError(''); }}
-            onKeyDown={e => e.key === 'Enter' && handleConnect()}
-            placeholder={signinTab === 'subscription' ? 'Paste your token here (sk-ant-oat-...)' : 'Paste your API key here (sk-ant-api...)'}
-            className="w-full min-h-input px-5 rounded-friendly text-body bg-[var(--bg-card)] text-[var(--text-primary)] border-2 border-[var(--border)] focus:border-[var(--accent)] focus:outline-none focus:ring-4 focus:ring-shell-300"
-            autoFocus
-          />
-
-          {error && (
-            <p className="text-body text-red-500 bg-red-50 dark:bg-red-900/20 rounded-friendly px-4 py-3 text-left">
-              {error}
-            </p>
-          )}
-
-          <BigButton
-            onClick={handleConnect}
-            disabled={!accessCode.trim() || testing}
-            className="w-full"
-          >
-            {testing ? 'Connecting...' : 'Connect'}
-          </BigButton>
-
-          <button
-            onClick={() => { setView(VIEW.CHOOSE); setError(''); setAccessCode(''); }}
-            className="text-small text-[var(--accent)] hover:underline"
-          >
-            Go back
-          </button>
-        </div>
+        <button
+          onClick={() => { setView(VIEW.CHOOSE); setError(''); setAccessCode(''); setOauthStatus(null); }}
+          className="text-small text-[var(--accent)] hover:underline"
+        >
+          Go back
+        </button>
       </div>
     );
   }
