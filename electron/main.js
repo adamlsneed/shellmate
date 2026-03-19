@@ -18,9 +18,21 @@ let mainWindow = null;
 let server = null;
 let expressAppRef = null;
 
+let manualUpdateCheck = false;
+
 function checkForUpdates() {
   if (!autoUpdater) return;
-  autoUpdater.checkForUpdates().catch(() => {});
+  manualUpdateCheck = true;
+  autoUpdater.checkForUpdates().catch((err) => {
+    manualUpdateCheck = false;
+    if (mainWindow) {
+      dialog.showMessageBox(mainWindow, {
+        type: 'error',
+        title: 'Update Check Failed',
+        message: `Could not check for updates: ${err?.message || 'Unknown error'}`,
+      });
+    }
+  });
 }
 
 function setupAutoUpdater() {
@@ -30,6 +42,7 @@ function setupAutoUpdater() {
   autoUpdater.autoInstallOnAppQuit = true;
 
   autoUpdater.on('update-available', (info) => {
+    manualUpdateCheck = false;
     dialog.showMessageBox(mainWindow, {
       type: 'info',
       title: 'Update Available',
@@ -75,13 +88,32 @@ function setupAutoUpdater() {
     });
   });
 
+  autoUpdater.on('update-not-available', () => {
+    console.log('Auto-updater: no update available (current version is latest)');
+    if (manualUpdateCheck && mainWindow) {
+      dialog.showMessageBox(mainWindow, {
+        type: 'info',
+        title: 'No Update Available',
+        message: `You're running the latest version (${app.getVersion()}).`,
+      });
+    }
+    manualUpdateCheck = false;
+  });
+
   autoUpdater.on('error', (err) => {
     console.log('Auto-updater error:', err?.message);
     if (mainWindow) mainWindow.setProgressBar(-1);
   });
 
-  // Check for updates 3 seconds after launch
-  setTimeout(() => checkForUpdates(), 3000);
+  autoUpdater.on('checking-for-update', () => {
+    console.log('Auto-updater: checking for updates...');
+  });
+
+  // Check for updates 3 seconds after launch (silent — no dialog if up to date)
+  setTimeout(() => {
+    if (!autoUpdater) return;
+    autoUpdater.checkForUpdates().catch(() => {});
+  }, 3000);
 }
 
 const template = [
