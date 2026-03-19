@@ -155,7 +155,8 @@ export function fileList({ path: dirPath, recursive = false }) {
   }
 }
 
-export async function webSearch({ query, count = 5 }, braveApiKey) {
+export async function webSearch({ query, count = 5 }, context = {}) {
+  const braveApiKey = context.braveApiKey;
   if (!braveApiKey) return 'Web search not configured — no Brave API key found.';
   try {
     const params = new URLSearchParams({ q: query, count: Math.min(count, 20) });
@@ -215,7 +216,7 @@ export async function executeTool(name, input, context = {}) {
     case 'file_read':   return fileRead(input);
     case 'file_write':  return fileWrite(input);
     case 'file_list':   return fileList(input);
-    case 'web_search':  return webSearch(input, context.braveApiKey);
+    case 'web_search':  return webSearch(input, context);
     case 'web_fetch':   return webFetch(input);
     default:            return `Unknown tool: ${name}`;
   }
