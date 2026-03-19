@@ -6,6 +6,8 @@
 import { normalizeModel } from '../utils/ai-clients.js';
 import { executeTool } from './registry.js';
 import { toAnthropicTools, toOpenAITools } from './registry.js';
+import { getToolMeta } from './registry.js';
+import { resolveTier, isGranted, grant, createConfirmation } from './permissions.js';
 
 const MAX_ROUNDS = 15;
 const ANTHROPIC_VERSION = '2023-06-01';
@@ -68,6 +70,66 @@ async function callOpenAIRaw({ apiKey, model, messages, system, tools, maxTokens
   return data;
 }
 
+/**
+ * Check permission for a tool call. If confirmation is needed, sends a
+ * 'confirm' SSE event and awaits the user's response via Promise.
+ * Returns the tool result string — either from execution or 'Permission denied'.
+ */
+async function executeWithPermission(toolName, input, context, onEvent) {
+  const meta = getToolMeta(toolName);
+  const action = input?.action || null;
+  const tier = resolveTier(meta, action);
+
+  // Read tier: always allowed
+  if (tier === 'read' || isGranted(toolName, tier)) {
+    return executeTool(toolName, input, context);
+  }
+
+  // Need confirmation — create a pending Promise
+  const { confirmId, promise } = createConfirmation();
+
+  // Build a human-readable description of what the tool wants to do
+  const description = describeToolAction(toolName, input);
+
+  // Send confirm event to client
+  onEvent({
+    type: 'confirm',
+    confirmId,
+    tool: toolName,
+    action: action || toolName,
+    tier,
+    description,
+  });
+
+  // Await user response (Promise resolves when POST /api/tools/grant is called)
+  const { granted: userGranted } = await promise;
+
+  if (userGranted) {
+    grant(toolName, tier);
+    return executeTool(toolName, input, context);
+  } else {
+    return 'Permission denied by user.';
+  }
+}
+
+/**
+ * Generate a short, human-readable description of a tool action.
+ */
+function describeToolAction(toolName, input) {
+  // Mac tools use action dispatch
+  if (input?.action) {
+    const action = input.action.replace(/_/g, ' ');
+    const target = input.title || input.name || input.path || input.query || '';
+    return target ? `${action}: "${target}"` : action;
+  }
+  // Built-in tools
+  switch (toolName) {
+    case 'shell_exec': return `Run command: ${(input?.command || '').slice(0, 60)}`;
+    case 'file_write': return `Write file: ${input?.path || 'unknown'}`;
+    default: return toolName.replace(/_/g, ' ');
+  }
+}
+
 // ── Anthropic tool-use loop ─────────────────────────────────────────────────
 
 export async function runAnthropicLoop({ apiKey, model, system, messages, tools, maxTokens, onEvent, context }) {
@@ -102,7 +164,7 @@ export async function runAnthropicLoop({ apiKey, model, system, messages, tools,
     // Execute all tool calls and build tool_result blocks
     const toolResults = [];
     for (const tu of toolUses) {
-      const result = await executeTool(tu.name, tu.input, context);
+      const result = await executeWithPermission(tu.name, tu.input, context, onEvent);
       onEvent({ type: 'tool_result', id: tu.id, name: tu.name, result });
       toolResults.push({
         type: 'tool_result',
@@ -153,7 +215,7 @@ export async function runOpenAILoop({ apiKey, model, system, messages, tools, ma
 
       onEvent({ type: 'tool_call', name: fn.name, input, id: tc.id });
 
-      const result = await executeTool(fn.name, input, context);
+      const result = await executeWithPermission(fn.name, input, context, onEvent);
       onEvent({ type: 'tool_result', id: tc.id, name: fn.name, result });
 
       conversation.push({
