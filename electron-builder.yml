@@ -16,7 +16,7 @@ mac:
   target: dmg
   category: public.app-category.productivity
   icon: electron/icons/icon.icns
-  identity: "Developer ID Application: Adam Sneed (66K48S8RD4)"
+  identity: "Adam Sneed (66K48S8RD4)"
   hardenedRuntime: true
   gatekeeperAssess: false
   entitlements: electron/entitlements.mac.plist
