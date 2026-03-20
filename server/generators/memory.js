@@ -26,7 +26,6 @@ export function generateMemory(agent, _teamSpec) {
 (What worked well, what didn't, corrections the user made.)
 `;
 }
-}
 
 export function generateMemoryReadme(_agent, _teamSpec) {
   return `# memory/ - Session Logs
