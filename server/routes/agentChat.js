@@ -24,6 +24,12 @@ function buildSystemPrompt(workspace) {
   const tools    = readWsFile(workspace, 'TOOLS.md');
   const memory   = readWsFile(workspace, 'MEMORY.md');
 
+  // Load today's and yesterday's daily logs for recent context
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const todayLog = readWsFile(workspace, `memory/${today}.md`);
+  const yesterdayLog = readWsFile(workspace, `memory/${yesterday}.md`);
+
   const parts = [];
   if (soul)     parts.push(soul);
   if (identity) parts.push(`---\n${identity}`);
@@ -31,6 +37,11 @@ function buildSystemPrompt(workspace) {
   if (user)     parts.push(`---\n${user}`);
   if (tools)    parts.push(`---\n${tools}`);
   if (memory)   parts.push(`---\n## Long-term memory\n${memory}`);
+  if (yesterdayLog) parts.push(`---\n## Yesterday's notes (${yesterday})\n${yesterdayLog}`);
+  if (todayLog) parts.push(`---\n## Today's notes (${today})\n${todayLog}`);
+
+  // Tell the agent where its workspace lives so it can use file_write
+  parts.push(`---\n## Workspace\n\nYour workspace directory is: \`${workspace}\`\nToday's date: ${today}\nMemory file: \`${workspace}/MEMORY.md\`\nToday's log: \`${workspace}/memory/${today}.md\``);
 
   return parts.join('\n\n');
 }

@@ -5,30 +5,27 @@
 export function generateMemory(agent, _teamSpec) {
   return `# MEMORY.md - Long-Term Memory
 
-## Role
+## About the User
 
-**${agent.name || 'Shellmate'}** — ${agent.mission || '// TODO'}
+(Save their name, what they use their Mac for, and how they prefer to be helped.)
 
-## Goal
+## Preferences & Habits
 
-// TODO: Add long-term goals and current priorities
-
-## Active Context
-
-// TODO: What are you currently working on?
+(What apps they use most, how they like things organized, communication style.)
 
 ## Key Decisions
 
-// TODO: Important decisions made so far
+(Important choices made — what was decided and why.)
+
+## Active Context
+
+(What are we currently working on? Any ongoing tasks or projects.)
 
 ## Lessons Learned
 
-// TODO: What have you learned that future-you should know?
-
----
-
-_Update this file during sessions. This is your curated long-term memory._
+(What worked well, what didn't, corrections the user made.)
 `;
+}
 }
 
 export function generateMemoryReadme(_agent, _teamSpec) {

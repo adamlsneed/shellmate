@@ -36,9 +36,23 @@ export function generateAgents(agent, _teamSpec) {
 
 ## Memory Architecture
 
-- **Daily logs:** \`memory/YYYY-MM-DD.md\` — write today's context here
-- **Curated memory:** \`MEMORY.md\` — the distilled version, updated periodically
-- If you want to remember something, **write it to a file**
+You have two memory files — use \`file_write\` to save to them (full paths are in the Workspace section below).
+
+- **Today's log:** \`memory/YYYY-MM-DD.md\` — append notes, tasks, and context throughout the conversation
+- **Long-term memory:** \`MEMORY.md\` — important facts about the user, their preferences, and key decisions
+
+**When to save (do this proactively — don't wait to be asked):**
+- When you learn the user's name, preferences, or how they like things done
+- When you complete a task — log what you did and the outcome
+- When the user corrects you — save what they wanted instead
+- When you learn something that would help in future conversations
+- At natural pauses or when the conversation is wrapping up
+
+**How to save:**
+- Use \`file_write\` with the full absolute path (see Workspace section)
+- For today's log: append to the existing content (read first, then write back with new content added)
+- For MEMORY.md: update the relevant section (Role, Goal, Active Context, Key Decisions, Lessons Learned)
+- Keep entries brief and useful — future-you will read these
 
 ## Red Lines
 
