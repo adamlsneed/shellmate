@@ -105,7 +105,7 @@ export default function SimpleAISetup({ onDone }) {
     const key = accessCode.trim();
     const isAnthropic = key.startsWith('sk-ant-');
     const provider = isAnthropic ? 'anthropic' : 'openai';
-    const model = isAnthropic ? 'claude-sonnet-4-6' : 'gpt-4o';
+    const model = isAnthropic ? 'claude-sonnet-4-6' : 'gpt-4.1-mini';
 
     try {
       const res = await fetch('/api/chat', {

@@ -85,7 +85,7 @@ router.post('/agent-chat/:agentId', async (req, res) => {
     const loopFn = actualProvider === 'openai' ? runOpenAILoop : runAnthropicLoop;
     await loopFn({
       apiKey,
-      model: model || (actualProvider === 'openai' ? 'gpt-4o' : (apiKey?.startsWith('sk-ant-oat') ? 'claude-haiku-4-5-20251001' : 'claude-sonnet-4-6')),
+      model: model || (actualProvider === 'openai' ? 'gpt-4.1-mini' : (apiKey?.startsWith('sk-ant-oat') ? 'claude-haiku-4-5-20251001' : 'claude-sonnet-4-6')),
       system,
       messages,
       tools,
