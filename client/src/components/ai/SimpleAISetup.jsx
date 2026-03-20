@@ -44,7 +44,7 @@ export default function SimpleAISetup({ onDone }) {
         const tokenRes = await fetch('/api/oauth/token');
         const tokenData = await tokenRes.json();
         if (tokenData.token) {
-          configure({ provider: 'anthropic', apiKey: tokenData.token, model: 'claude-sonnet-4-6', envKey: false });
+          configure({ provider: 'anthropic', apiKey: tokenData.token, model: 'claude-haiku-4-5-20251001', envKey: false });
           onDone();
           return;
         }
@@ -85,7 +85,7 @@ export default function SimpleAISetup({ onDone }) {
       });
       const data = await res.json();
       if (data.ok && data.token) {
-        configure({ provider: 'anthropic', apiKey: data.token, model: 'claude-sonnet-4-6', envKey: false });
+        configure({ provider: 'anthropic', apiKey: data.token, model: 'claude-haiku-4-5-20251001', envKey: false });
         onDone();
       } else {
         setError(data.error || 'Code exchange failed. Please try again.');

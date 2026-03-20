@@ -192,7 +192,7 @@ function saveOAuthCredentials(credentials) {
   cfg.ai = {
     ...(cfg.ai || {}),
     provider: 'anthropic',
-    model: cfg.ai?.model || 'claude-sonnet-4-6',
+    model: cfg.ai?.model || 'claude-haiku-4-5-20251001',
     configured: true,
     envKey: false,
     oauth: {

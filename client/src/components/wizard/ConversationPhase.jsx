@@ -251,8 +251,8 @@ export default function ConversationPhase({ simpleMode = false }) {
         <div className="flex items-center gap-3 mb-4">
           <span className="text-2xl">🐢</span>
           <div>
-            <h2 className="text-lg font-bold text-white leading-tight">Set up your Mac helper</h2>
-            <p className="text-gray-500 text-xs">A short conversation, then your helper is ready.</p>
+            <h2 className="text-lg font-bold text-[var(--text-primary)] leading-tight">Set up your Mac helper</h2>
+            <p className="text-[var(--text-muted)] text-xs">A short conversation, then your helper is ready.</p>
           </div>
         </div>
         <AISetup onDone={() => {
@@ -269,7 +269,7 @@ export default function ConversationPhase({ simpleMode = false }) {
       {/* Messages */}
       <div className="flex-1 min-h-0 overflow-y-auto py-4 scrollbar-thin">
         {conversationMessages.length === 0 && !loading && (
-          <div className="text-center text-gray-600 text-sm mt-16">Starting conversation...</div>
+          <div className="text-center text-[var(--text-muted)] text-sm mt-16">Starting conversation...</div>
         )}
 
         {conversationMessages.map((msg, i) => (
@@ -284,17 +284,17 @@ export default function ConversationPhase({ simpleMode = false }) {
 
         {loading && (
           <div className="flex justify-start mb-4">
-            <div className="w-8 h-8 rounded-full bg-shell-700 flex items-center justify-center text-sm mr-3 shrink-0">
+            <div className="w-8 h-8 rounded-full bg-[var(--accent)] flex items-center justify-center text-sm mr-3 shrink-0">
               🐢
             </div>
-            <div className="bg-gray-800 rounded-2xl rounded-bl-sm px-4 py-3">
+            <div className="bg-[var(--bg-card)] rounded-2xl rounded-bl-sm px-4 py-3">
               <BouncingDots />
             </div>
           </div>
         )}
 
         {error && (
-          <div className="bg-red-900/30 border border-red-700 rounded-xl p-3 mb-4 text-sm text-red-300">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl p-3 mb-4 text-sm text-red-600 dark:text-red-300">
             {error}
             <button onClick={() => { setError(''); setShowSetup(true); }} className="ml-2 underline text-xs">
               Check AI settings
@@ -304,13 +304,13 @@ export default function ConversationPhase({ simpleMode = false }) {
 
         {/* Ready-to-review banner */}
         {conversationComplete && !loading && (
-          <div className="bg-green-900/20 border border-green-700 rounded-xl p-4 mb-4 text-center">
-            <p className="text-green-300 text-sm font-medium mb-3">
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-xl p-4 mb-4 text-center">
+            <p className="text-green-600 dark:text-green-300 text-sm font-medium mb-3">
               All set! Ready to review and generate your helper.
             </p>
             <button
               onClick={advance}
-              className="px-6 py-2.5 bg-green-700 hover:bg-green-600 text-white rounded-xl text-sm font-semibold transition-colors"
+              className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-semibold transition-colors"
             >
               Review & generate →
             </button>
@@ -321,7 +321,7 @@ export default function ConversationPhase({ simpleMode = false }) {
       </div>
 
       {/* Input */}
-      <div className="border-t border-gray-800 pt-4 pb-2">
+      <div className="border-t border-[var(--border)] pt-4 pb-2">
         <div className="flex gap-3 items-end">
           <textarea
             ref={inputRef}
@@ -331,23 +331,23 @@ export default function ConversationPhase({ simpleMode = false }) {
             placeholder="Type your reply..."
             rows={2}
             disabled={loading}
-            className="flex-1 bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-gray-100 placeholder-gray-600 focus:outline-none focus:border-shell-500 resize-none disabled:opacity-50 leading-relaxed"
+            className="flex-1 bg-[var(--bg-card)] border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent)] resize-none disabled:opacity-50 leading-relaxed"
           />
           <button
             onClick={handleSend}
             disabled={loading || !input.trim()}
-            className="px-5 py-3 bg-shell-600 hover:bg-shell-500 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-40 shrink-0"
+            className="px-5 py-3 bg-[var(--accent)] hover:opacity-90 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-40 shrink-0"
           >
             Send
           </button>
         </div>
 
         <div className="flex items-center justify-between mt-2 px-1">
-          <span className="text-xs text-gray-600">Press Enter to send, Shift+Enter for new line</span>
+          <span className="text-xs text-[var(--text-muted)]">Press Enter to send, Shift+Enter for new line</span>
           {!conversationComplete && conversationMessages.length >= 10 && (
             <button
               onClick={advance}
-              className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+              className="text-xs text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
             >
               Skip to review →
             </button>
