@@ -20,7 +20,7 @@ export default function SimpleAISetup({ onDone }) {
       .then(r => r.json())
       .then(data => {
         if (data.available) {
-          configure({ provider: data.provider || 'anthropic', apiKey: '', model: data.model || 'claude-sonnet-4-6', envKey: true });
+          configure({ provider: data.provider || 'anthropic', apiKey: '', model: data.model || 'claude-haiku-4-5-20251001', envKey: true });
           onDone();
         }
       })

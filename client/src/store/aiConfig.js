@@ -45,7 +45,7 @@ const saved = loadLocal();
 export const useAIConfig = create((set, get) => ({
   provider: saved.provider || 'default',
   apiKey: saved.apiKey || '',
-  model: saved.model || 'claude-sonnet-4-6',
+  model: saved.model || 'claude-haiku-4-5-20251001',
   configured: saved.configured || false,
   envKey: saved.envKey || false,
 
@@ -62,7 +62,7 @@ export const useAIConfig = create((set, get) => ({
   },
 
   reset: () => {
-    const next = { provider: 'default', apiKey: '', model: 'claude-sonnet-4-6', configured: false, envKey: false };
+    const next = { provider: 'default', apiKey: '', model: 'claude-haiku-4-5-20251001', configured: false, envKey: false };
     set(next);
     saveLocal(next);
     saveToServer(next);
@@ -78,7 +78,7 @@ export const useAIConfig = create((set, get) => ({
         const next = {
           provider: data.provider || 'default',
           apiKey: data.apiKey || '',
-          model: data.model || 'claude-sonnet-4-6',
+          model: data.model || 'claude-haiku-4-5-20251001',
           configured: true,
           envKey: !!data.envKey,
         };

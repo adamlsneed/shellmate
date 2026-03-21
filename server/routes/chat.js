@@ -48,8 +48,8 @@ router.get('/chat/env-status', async (_req, res) => {
 
     let model = null;
     let provider = null;
-    if (anthropicKey) { model = 'claude-sonnet-4-6'; provider = 'anthropic'; }
-    else if (openaiKey) { model = 'gpt-4o'; provider = 'openai'; }
+    if (anthropicKey) { model = 'claude-haiku-4-5-20251001'; provider = 'anthropic'; }
+    else if (openaiKey) { model = 'gpt-4.1-mini'; provider = 'openai'; }
 
     const available = !!(model && provider);
     res.json({ available, provider, model, normalized: model ? normalizeModel(model) : null });

@@ -3,7 +3,7 @@ import { useTeamSpecStore } from '../../store/teamSpec.js';
 import { useAIConfig } from '../../store/aiConfig.js';
 import { useWizard } from '../../hooks/useWizard.js';
 import { useScrollToBottom, useAutofocus } from '../../hooks/useChatUI.js';
-import AISetup from '../ai/AISetup.jsx';
+import SimpleAISetup from '../ai/SimpleAISetup.jsx';
 import { MessageBubble } from '../common/MessageBubble.jsx';
 import { BouncingDots } from '../common/LoadingSpinner.jsx';
 
@@ -255,7 +255,7 @@ export default function ConversationPhase({ simpleMode = false }) {
             <p className="text-[var(--text-muted)] text-xs">A short conversation, then your helper is ready.</p>
           </div>
         </div>
-        <AISetup onDone={() => {
+        <SimpleAISetup onDone={() => {
           setShowSetup(false);
           initialized.current = false;
         }} />
