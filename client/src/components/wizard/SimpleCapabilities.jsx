@@ -173,8 +173,8 @@ export default function SimpleCapabilities({ onDone, onSkip }) {
           <p className="text-body text-[var(--text-secondary)]">
             This gives Shellmate the ability to run commands on your Mac — like opening apps, organizing files, checking settings, or fixing problems. It's what makes Shellmate a real IT helper instead of just a chatbot.
           </p>
-          <div className="px-4 py-3 rounded-friendly bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700">
-            <p className="text-body text-yellow-700 dark:text-yellow-300">
+          <div className="px-4 py-3 rounded-friendly bg-amber-50 dark:bg-yellow-900/20 border border-amber-300 dark:border-yellow-700">
+            <p className="text-body text-amber-900 dark:text-yellow-200">
               <strong>Good to know:</strong> Shellmate will always ask before doing anything risky, like deleting files or changing settings. But if you're not sure, you can leave this off and Shellmate will still be able to answer questions and help with web searches.
             </p>
           </div>

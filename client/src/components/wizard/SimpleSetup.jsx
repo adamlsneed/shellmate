@@ -16,12 +16,16 @@ export default function SimpleSetup({ onComplete }) {
   const finishAttempted = useRef(false);
 
   // When AI conversation is done, auto-finish setup
+  // Require at least 6 messages (3 user + 3 assistant) to prevent premature completion
+  const { conversationMessages } = useTeamSpecStore();
+  const userMessageCount = conversationMessages.filter(m => m.role === 'user').length;
+
   useEffect(() => {
-    if (conversationComplete && step === STEP.CHAT && !finishAttempted.current) {
+    if (conversationComplete && step === STEP.CHAT && !finishAttempted.current && userMessageCount >= 3) {
       finishAttempted.current = true;
       finishSetup();
     }
-  }, [conversationComplete, step]);
+  }, [conversationComplete, step, userMessageCount]);
 
   async function finishSetup() {
     setStep(STEP.FINISHING);
@@ -54,11 +58,11 @@ export default function SimpleSetup({ onComplete }) {
       });
       if (!writeRes.ok) throw new Error('Failed to write files');
 
-      // Register agent in config (same pattern as GenerateStep.jsx)
+      // Register agent in config and mark setup complete
       await fetch('/api/config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ isMainAgent: true }),
+        body: JSON.stringify({ isMainAgent: true, setupComplete: true }),
       });
 
       setStep(STEP.READY);

@@ -39,9 +39,10 @@ router.get('/setup-status', (_req, res) => {
   const defaultWsRaw = cfg.agents?.defaults?.workspace || '~/.shellmate/workspace';
   const defaultWs = expandHome(defaultWsRaw);
   const soulExists = fs.existsSync(path.join(defaultWs, 'SOUL.md'));
+  const configFlag = !!cfg.setupComplete;
   const agentCount = (cfg.agents?.list || []).length + (soulExists ? 1 : 0);
   res.json({
-    setupComplete: soulExists,
+    setupComplete: soulExists || configFlag,
     agentCount,
   });
 });
@@ -150,10 +151,15 @@ router.post('/ai-config', (req, res) => {
 // This simplified PATCH just handles bindings.
 router.patch('/config', (req, res) => {
   try {
-    const { bindings: newBindings } = req.body;
+    const { bindings: newBindings, setupComplete } = req.body;
     const cfg = readConfig();
 
     backupConfig();
+
+    // Mark setup as complete
+    if (setupComplete) {
+      cfg.setupComplete = true;
+    }
 
     // Merge bindings (top-level) — prepend new, deduplicate
     if (!cfg.bindings) cfg.bindings = [];
